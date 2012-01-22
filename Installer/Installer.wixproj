@@ -26,7 +26,9 @@
     <SuppressSpecificWarnings>1076;1118</SuppressSpecificWarnings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CustomWelcomeEulaDlg.wxs" />
     <Compile Include="Installer.wxs" />
+    <Compile Include="CustomWixUI_Minimal.wxs" />
   </ItemGroup>
   <ItemGroup>
     <WixExtension Include="WixNetFxExtension">
