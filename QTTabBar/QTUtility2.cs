@@ -53,6 +53,19 @@ namespace QTTabBarLib {
             fConsoleAllocated = true;
         }
 
+        public static T DeepClone<T>(T obj) {
+            using(var ms = new MemoryStream()) {
+                BinaryFormatter formatter = new BinaryFormatter();
+                formatter.Serialize(ms, obj);
+                ms.Position = 0;
+                return (T)formatter.Deserialize(ms);
+            }
+        }
+
+        public static string Enquote(this string s) {
+            return "\"" + s + "\"";
+        }
+
         public static int GET_X_LPARAM(IntPtr lParam) {
             return (short)(((int)lParam) & 0xffff);
         }
@@ -86,6 +99,26 @@ namespace QTTabBarLib {
             QTUtility.TMPPathList.Clear();
             QTUtility.TMPIDLList.Clear();
             QTUtility.TMPTargetIDL = null;
+        }
+
+        internal static IEnumerable<T> Interleave<T>(this IEnumerable<T> first, IEnumerable<T> second) {
+            using(var enumerator1 = first.GetEnumerator())
+            using(var enumerator2 = second.GetEnumerator()) {
+                while(enumerator1.MoveNext()) {
+                    yield return enumerator1.Current;
+                    if(enumerator2.MoveNext()) {
+                        yield return enumerator2.Current;
+                    }
+                }
+                while(enumerator2.MoveNext()) {
+                    yield return enumerator2.Current;
+                }
+            }
+        }
+
+        public static bool IsExecutable(string ext) {
+            const string EXTS = ".COM|.EXE|.BAT|.CMD|.VBS|.VBE|.JS|.JSE|.WSF|.WSH|.MSC|.LNK";
+            return ext != null && ext.Length > 2 && -1 != EXTS.IndexOf(ext.ToUpper());
         }
 
         public static bool IsNetworkPath(string path) {
@@ -195,6 +228,11 @@ namespace QTTabBarLib {
         public static Color MakeModColor(Color clr) {
             float num = 0.875f;
             return Color.FromArgb(((int)((0xff - clr.R) * num)) + clr.R, ((int)((0xff - clr.G) * num)) + clr.G, ((int)((0xff - clr.B) * num)) + clr.B);
+        }
+
+        public static string MakeNameEllipsis(string name) {
+            bool dummy;
+            return MakeNameEllipsis(name, out dummy);
         }
 
         public static string MakeNameEllipsis(string name, out bool fTruncated) {
@@ -478,6 +516,130 @@ namespace QTTabBarLib {
             else {
                 rk.SetValue(valName, (long)hwnd, RegistryValueKind.QWord);
             }
+        }
+    }
+
+    static class RegFileWriter {
+        // implements exporting of registry key as a reg file
+        // to avoid UAC dialog caused by using Regedit.exe
+        const string NEWLINE = "\r\n";
+        const bool fNewLineForBinary = true;
+
+        public static void Export(string keyName, string filePath) {
+            using(RegistryKey rk = Registry.CurrentUser.OpenSubKey(keyName)) {
+                StringBuilder sb = new StringBuilder("Windows Registry Editor Version 5.00" + NEWLINE + NEWLINE);
+
+                buildSubkeyString(rk, sb);
+
+                using(FileStream fs = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.Read)) {
+                    // reg file is encoded by UTF16LE with BOM
+                    using(StreamWriter sw = new StreamWriter(fs, new UnicodeEncoding(false, true))) {
+                        sw.Write(sb.ToString());
+                    }
+                }
+            }
+        }
+
+
+        private static void buildSubkeyString(RegistryKey rk, StringBuilder sb) {
+            // exclude volatile keys
+            // TODO: make this more general
+            if(rk.Name == @"HKEY_CURRENT_USER\Software\QTTabBar\Cache") {
+                return;
+            }
+            sb.Append(readValues(rk));
+
+            foreach(string subKeyName in rk.GetSubKeyNames()) {
+                using(RegistryKey rkSub = rk.OpenSubKey(subKeyName)) {
+                    buildSubkeyString(rkSub, sb);
+                }
+            }
+        }
+
+        private static string readValues(RegistryKey rk) {
+            string s = "";
+            foreach(string valName in rk.GetValueNames()) {
+                switch(rk.GetValueKind(valName)) {
+                    case RegistryValueKind.Binary:
+                        s += binaryToString(rk, valName);
+                        break;
+
+                    case RegistryValueKind.QWord:
+                        s += qwordToString(rk, valName);
+                        break;
+
+                    case RegistryValueKind.DWord:
+                        s += dwordToString(rk, valName);
+                        break;
+
+                    case RegistryValueKind.String:
+                        s += szToString(rk, valName);
+                        break;
+
+                    case RegistryValueKind.ExpandString:
+                        s += expandSzToString(rk, valName);
+                        break;
+
+                    case RegistryValueKind.MultiString:
+                        s += multiSzToString(rk, valName);
+                        break;
+                }
+            }
+            return s.Length > 0
+                    ? "[" + rk.Name + "]" + NEWLINE + s + NEWLINE
+                    : "";
+        }
+
+
+        private static string binaryToString(RegistryKey rk, string valName) {
+            return "\"" + sanitizeValName(valName) + "\"=hex:" + byteArrayToString((byte[])rk.GetValue(valName)) + NEWLINE;
+        }
+
+        private static string qwordToString(RegistryKey rk, string valName) {
+            return "\"" + sanitizeValName(valName) + "\"=hex(b):" + byteArrayToString(BitConverter.GetBytes((long)rk.GetValue(valName))) + NEWLINE;
+        }
+
+        private static string dwordToString(RegistryKey rk, string valName) {
+            return "\"" + sanitizeValName(valName) + "\"=dword:" + ((int)rk.GetValue(valName)).ToString("x8") + NEWLINE;
+        }
+
+        private static string szToString(RegistryKey rk, string valName) {
+            return "\"" + sanitizeValName(valName) + "\"=\"" + ((string)rk.GetValue(valName)).Replace(@"\", @"\\") + "\"" + NEWLINE;
+        }
+
+        private static string expandSzToString(RegistryKey rk, string valName) {
+            //REG_EXPAND_SZ
+            return "\"" + sanitizeValName(valName) + "\"=hex(2):" + byteArrayToString(new UnicodeEncoding().GetBytes((string)rk.GetValue(valName) + "\0")) + NEWLINE;
+        }
+
+        private static string multiSzToString(RegistryKey rk, string valName) {
+            //REG_MULTI_SZ
+            string str = ((string[])rk.GetValue(valName)).StringJoin("\0") + "\0\0";
+            return "\"" + sanitizeValName(valName) + "\"=hex(7):" + byteArrayToString(new UnicodeEncoding().GetBytes(str)) + NEWLINE;
+        }
+
+        private static string sanitizeValName(string str) {
+            return str.Replace(@"\", @"\\");
+        }
+
+        private static string byteArrayToString(byte[] bytes) {
+            StringBuilder sb = new StringBuilder();
+            int c = 0, n = 20;
+            for(int i = 0; i < bytes.Length; i++) {
+                sb.Append(bytes[i].ToString("x2"));
+                if(i == bytes.Length - 1) continue;
+                sb.Append(",");
+
+                if(fNewLineForBinary) {
+                    c++;
+                    if(c == n) {
+                        sb.Append("\\" + NEWLINE + "  ");
+                        c = 0;
+                        n = 25;
+                    }
+                }
+            }
+            return sb.ToString();
         }
     }
 }

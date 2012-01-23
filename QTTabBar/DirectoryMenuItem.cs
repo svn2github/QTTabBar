@@ -36,7 +36,7 @@ namespace QTTabBarLib {
             }
         }
 
-        public DateTime ModifiiedDate {
+        public DateTime ModifiedDate {
             get {
                 return dtDirMod;
             }

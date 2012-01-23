@@ -17,17 +17,13 @@
 
 namespace QTTabBarLib {
     internal sealed class MenuItemArguments {
-        public string Argument;
         public MenuGenre Genre;
         public int Index;
         public bool IsBack;
-        public int KeyShortcut;
-        public string OriginalArgument;
-        public string OriginalWorkingDirectory;
         public string Path;
         public MenuTarget Target;
-        public bool TokenReplaced;
-        public string WorkingDirectory;
+        public UserApp App;
+        public ShellBrowserEx ShellBrowser;
 
         public MenuItemArguments(string path, MenuTarget target, MenuGenre genre) {
             Path = path;
@@ -42,17 +38,11 @@ namespace QTTabBarLib {
             Genre = genre;
         }
 
-        public MenuItemArguments(string path, string arg, string work, int keyShortcut, MenuGenre genre) {
-            Path = path;
-            Argument = OriginalArgument = arg;
-            WorkingDirectory = OriginalWorkingDirectory = work;
-            KeyShortcut = keyShortcut;
+        public MenuItemArguments(UserApp app, ShellBrowserEx shellBrowser, MenuGenre genre) {
+            App = app;
+            Path = app.Path;
+            ShellBrowser = shellBrowser;
             Genre = genre;
-        }
-
-        public void RestoreOriginalArgs() {
-            Argument = OriginalArgument;
-            WorkingDirectory = OriginalWorkingDirectory;
         }
     }
 }

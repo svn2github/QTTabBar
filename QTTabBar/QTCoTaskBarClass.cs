@@ -64,7 +64,7 @@ namespace QTTabBarLib {
         private HookProc hookProc_Msg_ShellTrayWnd;
         private IntPtr hwndListView;
         private IntPtr hwndShellTray;
-        private static IContextMenu2 iContextMenu2;
+        private static ShellContextMenu shellContextMenu = new ShellContextMenu();
         private int iHookTimeout;
         private int iMainMenuShownCount;
         private TitleMenuItem labelGroupTitle;
@@ -137,7 +137,7 @@ namespace QTTabBarLib {
         }
 
         private void AddMenuItems_History() {
-            if(((ConfigValues[2] & 0x40) == 0) && !QTUtility.CheckConfig(Settings.NoHistory)) {
+            if(((ConfigValues[2] & 0x40) == 0) && Config.Misc.KeepHistory) {
                 if(ExpandState[1]) {
                     contextMenu.AddItem(labelHistoryTitle, "labelH");
                     contextMenu.AddItemsRange(UndoClosedItemsList.ToArray(), "historyItem");
@@ -150,7 +150,7 @@ namespace QTTabBarLib {
         }
 
         private void AddMenuItems_Recent() {
-            if(((ConfigValues[2] & 1) == 0) && !QTUtility.CheckConfig(Settings.NoRecentFiles)) {
+            if(((ConfigValues[2] & 1) == 0) && Config.Misc.KeepRecentFiles) {
                 if(ExpandState[3]) {
                     contextMenu.AddItem(labelRecentFileTitle, "labelR");
                     contextMenu.AddItemsRange(RecentFileItemsList.ToArray(), "recentItem");
@@ -329,9 +329,9 @@ namespace QTTabBarLib {
         }
 
         public override void CloseDW(uint dwReserved) {
-            if(iContextMenu2 != null) {
-                Marshal.ReleaseComObject(iContextMenu2);
-                iContextMenu2 = null;
+            if(shellContextMenu != null) {
+                shellContextMenu.Dispose();
+                shellContextMenu = null;
             }
             if(ShellBrowser != null) {
                 ShellBrowser.Dispose();
@@ -403,6 +403,8 @@ namespace QTTabBarLib {
         }
 
         private void contextMenu_ItemClicked(object sender, ToolStripItemClickedEventArgs e) {
+            // todo
+#if false
             TitleMenuItem clickedItem = e.ClickedItem as TitleMenuItem;
             if(clickedItem != null) {
                 if(clickedItem.IsOpened) {
@@ -425,7 +427,7 @@ namespace QTTabBarLib {
                             else {
                                 QTUtility.StartUpGroupList.Add(text);
                             }
-                            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+                            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                                 if(key != null) {
                                     key.SetValue("StartUpGroups", QTUtility.StartUpGroupList.StringJoin(";"));
                                 }
@@ -465,14 +467,16 @@ namespace QTTabBarLib {
                     }
                 }
             }
+#endif
         }
 
         private void contextMenu_ReorderFinished(object sender, ToolStripItemClickedEventArgs e) {
+#if false
             QMenuItem clickedItem = e.ClickedItem as QMenuItem;
             if(clickedItem != null) {
                 if(clickedItem.Genre == MenuGenre.Group) {
-                    Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar").DeleteSubKey("Groups", false);
-                    using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar\Groups")) {
+                    Registry.CurrentUser.CreateSubKey(RegConst.Root).DeleteSubKey("Groups", false);
+                    using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"Groups")) {
                         int num = 1;
                         foreach(ToolStripItem item2 in contextMenu.Items) {
                             QMenuItem item3 = item2 as QMenuItem;
@@ -487,7 +491,7 @@ namespace QTTabBarLib {
                     }
                 }
                 if(clickedItem.Genre == MenuGenre.Application) {
-                    using(RegistryKey key2 = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar\UserApps")) {
+                    using(RegistryKey key2 = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"UserApps")) {
                         foreach(string str in key2.GetValueNames()) {
                             key2.DeleteValue(str);
                         }
@@ -514,6 +518,7 @@ namespace QTTabBarLib {
                     QTUtility.fRequiredRefresh_App = true;
                 }
             }
+#endif
         }
 
         private void contextMenuForSetting_ItemClicked(object sender, ToolStripItemClickedEventArgs e) {
@@ -674,7 +679,7 @@ namespace QTTabBarLib {
             }
             bool fCanRemove = clickedItem.Genre != MenuGenre.Application;
             using(IDLWrapper wrapper = new IDLWrapper(clickedItem.Path)) {
-                e.HRESULT = ShellMethods.PopUpSystemContextMenu(wrapper, pnt, ref iContextMenu2, ((DropDownMenuReorderable)sender).Handle, fCanRemove);
+                e.HRESULT = shellContextMenu.Open(wrapper, pnt, ((DropDownMenuReorderable)sender).Handle, fCanRemove);
             }
             if(e.HRESULT != 0xffff) {
                 return;
@@ -683,7 +688,7 @@ namespace QTTabBarLib {
                 QTUtility.ClosedTabHistoryList.Remove(clickedItem.Path);
                 UndoClosedItemsList.Remove(clickedItem);
                 try {
-                    using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+                    using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                         QTUtility.SaveRecentlyClosed(key);
                     }
                     goto Label_019F;
@@ -696,7 +701,7 @@ namespace QTTabBarLib {
                 QTUtility.ExecutedPathsList.Remove(clickedItem.Path);
                 RecentFileItemsList.Remove(clickedItem);
                 try {
-                    using(RegistryKey key2 = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+                    using(RegistryKey key2 = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                         QTUtility.SaveRecentFiles(key2);
                     }
                 }
@@ -715,12 +720,12 @@ namespace QTTabBarLib {
         private bool GetTargetWindow(IDLWrapper idlw, bool fNeedWait, out IntPtr hwndTabBar, out bool fOpened) {
             hwndTabBar = IntPtr.Zero;
             fOpened = false;
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                 if(key != null) {
                     hwndTabBar = QTUtility2.ReadRegHandle("Handle", key);
                 }
                 if((hwndTabBar == IntPtr.Zero) || !PInvoke.IsWindow(hwndTabBar)) {                              // what?! --.
-                    hwndTabBar = QTUtility.instanceManager.CurrentHandle;                                       //          v
+                    hwndTabBar = InstanceManager.CurrentHandle;                                       //          v
                     if((idlw.Available && ((hwndTabBar == IntPtr.Zero) || !PInvoke.IsWindow(hwndTabBar))) && ShellBrowser.Navigate(idlw)  == 0) {
                         fOpened = true;
                         if(fNeedWait) {
@@ -747,54 +752,54 @@ namespace QTTabBarLib {
         }
 
         private void groupsMenuItem_ReorderFinished(object sender, ToolStripItemClickedEventArgs e) {
-            QTUtility.RefreshGroupMenuesOnReorderFinished(groupsMenuItem.DropDownItems);
+            GroupsManager.HandleReorder(groupsMenuItem.DropDownItems);
         }
 
         private bool HandleKEYDOWN(IntPtr wParam, bool fRepeat) {
             int key = ((int)wParam) | ((int)ModifierKeys);
             if(((int)wParam) == 0x10) {
                 if(!fRepeat) {
-                    if(!QTUtility.CheckConfig(Settings.PreviewsWithShift)) {
+                    if(!Config.Tips.ShowPreviewsWithShift) {
                         listView.HideThumbnailTooltip();
                     }
-                    if(!QTUtility.CheckConfig(Settings.NoShowSubDirTips) && !QTUtility.CheckConfig(Settings.SubDirTipsWithShift) && !listView.SubDirTipMenuIsShowing()) {
+                    if(Config.Tips.ShowSubDirTips && !Config.Tips.SubDirTipsWithShift && !listView.SubDirTipMenuIsShowing()) {
                         listView.HideSubDirTip();
                     }
                 }
                 return false;
             }
             if(key == 0x71) {
-                if(!QTUtility.CheckConfig(Settings.F2Selection)) {
+                if(!Config.Tweaks.F2Selection) {
                     // TODO
                     // QTTabBarClass.HandleF2(this.hwndListView);
                 }
                 return false;
             }
             key |= 0x100000;
-            if(((key == QTUtility.ShortcutKeys[0x1b]) || (key == QTUtility.ShortcutKeys[0x1c])) || (((key == QTUtility.ShortcutKeys[0x1d]) || (key == QTUtility.ShortcutKeys[30])) || (key == QTUtility.ShortcutKeys[0x1f]))) {
+            if(((key == Config.Keys.Shortcuts[0x1b]) || (key == Config.Keys.Shortcuts[0x1c])) || (((key == Config.Keys.Shortcuts[0x1d]) || (key == Config.Keys.Shortcuts[30])) || (key == Config.Keys.Shortcuts[0x1f]))) {
                 if(!fRepeat) {
                     if(listView.SubDirTipMenuIsShowing()) {
                         return false;
                     }
                     int index = 0;
-                    if(key == QTUtility.ShortcutKeys[0x1c]) {
+                    if(key == Config.Keys.Shortcuts[0x1c]) {
                         index = 1;
                     }
-                    else if(key == QTUtility.ShortcutKeys[0x1d]) {
+                    else if(key == Config.Keys.Shortcuts[0x1d]) {
                         index = 2;
                     }
-                    else if(key == QTUtility.ShortcutKeys[30]) {
+                    else if(key == Config.Keys.Shortcuts[30]) {
                         index = 3;
                     }
-                    else if(key == QTUtility.ShortcutKeys[0x1f]) {
+                    else if(key == Config.Keys.Shortcuts[0x1f]) {
                         index = 4;
                     }
                     DoFileTools(index);
                 }
                 return true;
             }
-            if(key == QTUtility.ShortcutKeys[0x26]) {
-                if(!QTUtility.CheckConfig(Settings.NoShowSubDirTips)) {
+            if(key == Config.Keys.Shortcuts[0x26]) {
+                if(Config.Tips.ShowSubDirTips) {
                     if(!fRepeat) {
                         DoFileTools(5);
                     }
@@ -802,6 +807,7 @@ namespace QTTabBarLib {
                 }
             }
             else {
+                #if false // todo
                 if(((ConfigValues[2] & 8) == 0) && QTUtility.dicUserAppShortcutKeys.ContainsKey(key)) {
                     if(fRepeat) {
                         goto Label_02D8;
@@ -812,10 +818,10 @@ namespace QTTabBarLib {
                                 where wrapper.Available && wrapper.HasPath && wrapper.IsFileSystem
                                 select wrapper.ToAddress()).ToArray();
                         if(list2.Length == 0) return false;
-                        AppLauncher launcher = new AppLauncher(list2, Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
+                        AppsManager launcher = new AppsManager(list2, Environment.GetFolderPath(Environment.SpecialFolder.Desktop));
                         launcher.ReplaceTokens_WorkingDir(mia);
                         launcher.ReplaceTokens_Arguments(mia);
-                        AppLauncher.Execute(mia, IntPtr.Zero);
+                        AppsManager.Execute(mia, IntPtr.Zero);
                         return true;
                     }
                     catch(Exception exception) {
@@ -825,6 +831,7 @@ namespace QTTabBarLib {
                         mia.RestoreOriginalArgs();
                     }
                 }
+
                 if(!fRepeat && QTUtility.dicGroupShortcutKeys.ContainsKey(key)) {
                     Thread thread = new Thread(OpenGroup);
                     thread.SetApartmentState(ApartmentState.STA);
@@ -832,21 +839,23 @@ namespace QTTabBarLib {
                     thread.Start(new object[] { QTUtility.dicGroupShortcutKeys[key], Keys.None });
                     return true;
                 }
+#endif
             }
         Label_02D8:
             return false;
         }
 
+        // TODO: merge with qttbc's.
         private bool HandleTabFolderActions(int index, Keys modKey, bool fEnqExec) {
-            if(QTUtility.CheckConfig(Settings.MidClickNewWindow)) {
+            /*if(Config.MidClickNewWindow) {
                 if(modKey == Keys.Control) {
                     modKey = Keys.None;
                 }
                 else if(modKey == Keys.None) {
                     modKey = Keys.Control;
                 }
-            }
-            if(!QTUtility.CheckConfig(Settings.ActivateNewTab)) {
+            }*/
+            if(!Config.Tabs.ActivateNewTab) {
                 if((modKey & Keys.Shift) == Keys.Shift) {
                     modKey &= ~Keys.Shift;
                 }
@@ -1027,7 +1036,7 @@ namespace QTTabBarLib {
         }
 
         private void InsertMenuItems_History() {
-            if(((ConfigValues[2] & 0x40) == 0) && !QTUtility.CheckConfig(Settings.NoHistory)) {
+            if(((ConfigValues[2] & 0x40) == 0) && Config.Misc.KeepHistory) {
                 if(ExpandState[1]) {
                     int index = contextMenu.Items.IndexOf(labelHistoryTitle);
                     if(index != -1) {
@@ -1043,7 +1052,7 @@ namespace QTTabBarLib {
         }
 
         private void InsertMenuItems_Recent() {
-            if(((ConfigValues[2] & 1) == 0) && !QTUtility.CheckConfig(Settings.NoRecentFiles)) {
+            if(((ConfigValues[2] & 1) == 0) && Config.Misc.KeepRecentFiles) {
                 if(ExpandState[3]) {
                     int index = contextMenu.Items.IndexOf(labelRecentFileTitle);
                     if(index != -1) {
@@ -1106,17 +1115,19 @@ namespace QTTabBarLib {
         }
 
         private bool ListView_SelectionActivated(Keys modKeys) {
-            bool fEnqExec = !QTUtility.CheckConfig(Settings.NoRecentFiles);
+            bool fEnqExec = Config.Misc.KeepRecentFiles;
             return HandleTabFolderActions(-1, modKeys, fEnqExec);
         }
 
+        // TODO
         private bool ListView_MiddleClick(Point pt) {
-            if(!QTUtility.CheckConfig(Settings.NoCaptureMidClick)) {
+            /*
+            if(!Config.NoCaptureMidClick) {
                 int index = listView.HitTest(pt, false);
                 if(index != -1) {
                     HandleTabFolderActions(index, ModifierKeys, false);
                 } 
-            }
+            }*/
             return false;
         }
 
@@ -1153,6 +1164,7 @@ namespace QTTabBarLib {
                 userAppsMenuItem.Text = labelUserAppTitle.Text = strArray[2];
                 recentFileMenuItem.Text = labelRecentFileTitle.Text = strArray[3];
                 if((ConfigValues[2] & 0x80) == 0) {
+#if false
                     QTUtility.RefreshGroupsDic();
                     foreach(string str in QTUtility.GroupPathsDic.Keys) {
                         string str2 = QTUtility.GroupPathsDic[str];
@@ -1173,9 +1185,10 @@ namespace QTTabBarLib {
                         }
                         GroupItemsList.Add(item);
                     }
+#endif
                 }
                 if((ConfigValues[2] & 0x20) == 0) {
-                    UserappItemsList = MenuUtility.CreateAppLauncherItems(Handle, (ConfigValues[1] & 2) == 0, dropDownMenues_ItemRightClicked, subMenuItems_DoubleClick, true);
+                    UserappItemsList = MenuUtility.CreateAppLauncherItems(Handle, ShellBrowser, (ConfigValues[1] & 2) == 0, dropDownMenues_ItemRightClicked, subMenuItems_DoubleClick, true);
                 }
                 bool flag = false;
                 bool flag2 = false;
@@ -1245,7 +1258,7 @@ namespace QTTabBarLib {
         protected override void OnHandleCreated(EventArgs e) {
             base.OnHandleCreated(e);
             if(IsHandleCreated) {
-                using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+                using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                     QTUtility2.WriteRegHandle("TaskBarHandle", key, Handle);
                 }
             }
@@ -1439,35 +1452,36 @@ namespace QTTabBarLib {
             }
         }
 
-        private void OpenGroup(object obj) {
-            string str2;
-            object[] objArray = (object[])obj;
-            string key = (string)objArray[0];
-            Keys keys = (Keys)objArray[1];
-            bool flag = keys == Keys.Control;
-            if(QTUtility.GroupPathsDic.TryGetValue(key, out str2) && (str2.Length > 0)) {
-                if(QTUtility.StartUpGroupList.Contains(key)) {
-                    QTUtility.StartUpGroupNameNowOpening = key;
-                }
-                string path = str2.Split(QTUtility.SEPARATOR_CHAR)[0];
-                using(IDLWrapper wrapper = new IDLWrapper(path, true)) {
-                    IntPtr ptr;
-                    bool flag2;
-                    if(GetTargetWindow(wrapper, true, out ptr, out flag2)) {
-                        if(flag2) {
-                            QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)2, key, IntPtr.Zero);
-                        }
-                        else {
-                            IntPtr wParam = flag ? ((IntPtr)3) : IntPtr.Zero;
-                            if((wParam == IntPtr.Zero) && QTUtility2.TargetIsInNoCapture(IntPtr.Zero, path)) {
-                                wParam = (IntPtr)3;
-                            }
-                            QTUtility2.SendCOPYDATASTRUCT(ptr, wParam, key, IntPtr.Zero);
-                        }
-                    }
-                }
-            }
-        }
+        // TODO...
+        //private void OpenGroup(object obj) {
+        //    string str2;
+        //    object[] objArray = (object[])obj;
+        //    string key = (string)objArray[0];
+        //    Keys keys = (Keys)objArray[1];
+        //    bool flag = keys == Keys.Control;
+        //    if(QTUtility.GroupPathsDic.TryGetValue(key, out str2) && (str2.Length > 0)) {
+        //        if(QTUtility.StartUpGroupList.Contains(key)) {
+        //            QTUtility.StartUpGroupNameNowOpening = key;
+        //        }
+        //        string path = str2.Split(QTUtility.SEPARATOR_CHAR)[0];
+        //        using(IDLWrapper wrapper = new IDLWrapper(path, true)) {
+        //            IntPtr ptr;
+        //            bool flag2;
+        //            if(GetTargetWindow(wrapper, true, out ptr, out flag2)) {
+        //                if(flag2) {
+        //                    QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)2, key, IntPtr.Zero);
+        //                }
+        //                else {
+        //                    IntPtr wParam = flag ? ((IntPtr)3) : IntPtr.Zero;
+        //                    if((wParam == IntPtr.Zero) && QTUtility2.TargetIsInNoCapture(IntPtr.Zero, path)) {
+        //                        wParam = (IntPtr)3;
+        //                    }
+        //                    QTUtility2.SendCOPYDATASTRUCT(ptr, wParam, key, IntPtr.Zero);
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
 
         private void OpenTab(object obj) {
             IDLWrapper wrapper;
@@ -1506,7 +1520,7 @@ namespace QTTabBarLib {
         }
 
         private void ReadSetting() {
-            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Quizo\QTTabBar")) {
+            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(RegConst.Root)) {
                 if(key != null) {
                     byte[] defaultValue = new byte[4];
                     defaultValue[0] = 1;
@@ -1538,10 +1552,10 @@ namespace QTTabBarLib {
                     item2.Dispose();
                 }
             }
-            if(((ConfigValues[2] & 0x40) == 0) && !QTUtility.CheckConfig(Settings.NoHistory)) {
+            if(((ConfigValues[2] & 0x40) == 0) && Config.Misc.KeepHistory) {
                 UndoClosedItemsList = MenuUtility.CreateUndoClosedItems(null);
             }
-            if(((ConfigValues[2] & 1) == 0) && !QTUtility.CheckConfig(Settings.NoRecentFiles)) {
+            if(((ConfigValues[2] & 1) == 0) && Config.Misc.KeepRecentFiles) {
                 RecentFileItemsList = MenuUtility.CreateRecentFilesItems();
             }
         }
@@ -1574,7 +1588,7 @@ namespace QTTabBarLib {
             ConfigValues[2] = (byte)(ConfigValues[2] | (tsmiAppKeys.Checked ? (0) : (8)));
             ConfigValues[2] = (byte)(ConfigValues[2] | (ExpandState[3] ? (2) : (0)));
             ConfigValues[3] = (byte)(ConfigValues[3] | ((byte)(Order_Root[2] << 5)));
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar")) {
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                 if(key != null) {
                     key.SetValue("Config_Desktop", ConfigValues);
                     key.SetValue("TaskBarWidth", Width);
@@ -1665,7 +1679,7 @@ namespace QTTabBarLib {
                 startInfo.WorkingDirectory = Path.GetDirectoryName(path);
                 startInfo.ErrorDialog = true;
                 Process.Start(startInfo);
-                if(!QTUtility.CheckConfig(Settings.NoRecentFiles)) {
+                if(Config.Misc.KeepRecentFiles) {
                     QTUtility.ExecutedPathsList.Add(path);
                 }
             }
@@ -1675,7 +1689,7 @@ namespace QTTabBarLib {
 
         private void subDirTip_MenuItemRightClicked(object sender, ItemRightClickedEventArgs e) {
             using(IDLWrapper wrapper = new IDLWrapper(((QMenuItem)e.ClickedItem).Path)) {
-                e.HRESULT = ShellMethods.PopUpSystemContextMenu(wrapper, e.IsKey ? e.Point : MousePosition, ref iContextMenu2, ((SubDirTipForm)sender).Handle, false);
+                e.HRESULT = shellContextMenu.Open(wrapper, e.IsKey ? e.Point : MousePosition, ((SubDirTipForm)sender).Handle, false);
             }
         }
 
@@ -1699,7 +1713,7 @@ namespace QTTabBarLib {
                     }
                 }
                 Keys modifierKeys = ModifierKeys;
-                if(!QTUtility.CheckConfig(Settings.ActivateNewTab)) {
+                if(!Config.Tabs.ActivateNewTab) {
                     switch(modifierKeys) {
                         case Keys.Shift:
                             modifierKeys = Keys.None;
@@ -1729,7 +1743,13 @@ namespace QTTabBarLib {
 
         private void subDirTip_MultipleMenuItemsRightClicked(object sender, ItemRightClickedEventArgs e) {
             List<string> executedDirectories = ((SubDirTipForm)sender).ExecutedDirectories;
-            e.HRESULT = ShellMethods.PopUpSystemContextMenu(executedDirectories, e.IsKey ? e.Point : MousePosition, ref iContextMenu2, ((SubDirTipForm)sender).Handle);
+            // TODO: Replace ExecutedDirectories with ExecutedIDLs.
+            List<byte[]> executedIDLs = executedDirectories.Select(path => {
+                using(IDLWrapper wrapper = new IDLWrapper(path)) {
+                    return wrapper.IDL;
+                }
+            }).ToList();
+            e.HRESULT = shellContextMenu.Open(executedIDLs, e.IsKey ? e.Point : MousePosition, ((SubDirTipForm)sender).Handle);
         }
 
         private static void subMenuItems_DoubleClick(object sender, EventArgs e) {
@@ -1773,8 +1793,12 @@ namespace QTTabBarLib {
         }
 
         private void userAppsMenuItem_ReorderFinished(object sender, ToolStripItemClickedEventArgs e) {
-            QTUtility.RefreshUserappMenuesOnReorderFinished(userAppsMenuItem.DropDownItems);
-            QTUtility.fRequiredRefresh_App = true;
+            AppsManager.SetUserAppsFromNestedStructure(
+                    userAppsMenuItem.DropDownItems.Cast<QMenuItem>(),
+                    item => item.MenuItemArguments.App,
+                    item => item.MenuItemArguments.App.IsFolder
+                        ? item.DropDown.Items.Cast<QMenuItem>()
+                        : null);
         }
 
         protected override void WndProc(ref Message m) {
@@ -1829,12 +1853,7 @@ namespace QTTabBarLib {
                         base.WndProc(ref m);
                         return;
                     }
-                    if((iContextMenu2 != null) && (m.HWnd == Handle)) {
-                        try {
-                            iContextMenu2.HandleMenuMsg(m.Msg, m.WParam, m.LParam);
-                        }
-                        catch {
-                        }
+                    if(m.HWnd == Handle && shellContextMenu.TryHandleMenuMsg(m.Msg, m.WParam, m.LParam)) {
                         return;
                     }
                     int windowThreadProcessId = PInvoke.GetWindowThreadProcessId(m.WParam, out num3);

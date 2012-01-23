@@ -25,89 +25,113 @@ using Microsoft.Win32;
 
 namespace QTTabBarLib {
     internal static class UpdateChecker {
+        private static string strMsgCaption = "QTTabBar " + QTUtility2.MakeVersionString();
         private static bool fCheckDone;
         private const int INTERVAL_CHECK_DAY = 5;
-        private static string strMsgCaption = ("QTTabBar " + QTUtility2.MakeVersionString());
 
         public static void Check(bool fForce) {
-            if(QTUtility.fIsDevelopmentVersion) {
-                return;
-            }
+            // check if new version of QTTabBar exists.
+
             if(fForce) {
-                string str;
-                ShowMsg(CheckInternal(out str), str);
+                string msg;
+                ShowMsg(CheckInternal(out msg), msg);
                 SaveLastCheck();
             }
             else if(!fCheckDone) {
                 fCheckDone = true;
                 if(DayHasCome()) {
-                    string str2;
-                    int num2 = CheckInternal(out str2);
+                    string msg;
+                    int code = CheckInternal(out msg);
                     SaveLastCheck();
-                    if(num2 == 2) {
-                        MessageForm.Show(string.Format(QTUtility.TextResourcesDic["UpdateCheck"][0], str2), strMsgCaption, Resources_String.SiteURL, MessageBoxIcon.Asterisk, 0xea60);
+
+                    if(code == 2) {
+                        MessageForm.Show(
+                                QTUtility.TextResourcesDic["UpdateCheck"][0] +
+                                Environment.NewLine + Environment.NewLine + msg + Environment.NewLine + Environment.NewLine +
+                                QTUtility.TextResourcesDic["UpdateCheck"][1],
+                                strMsgCaption,
+                                Resources_String.SiteURL,
+                                MessageBoxIcon.Information,
+                                60000);
                     }
                 }
             }
         }
 
         private static int CheckInternal(out string msg) {
-            HttpStatusCode statusCode;
+            // Reads text file (latestversion.txt) in the web site, 
+            // and compare version strings.
+            //
+            // latestversion.txt template is like this:
+            //		1.2.3;1.2.4;1.0
+            // released version;Beta version(if exists);Beta revision(if exists)
+            //
+            // ex. (1.2.3 is released, and no beta version)
+            //		1.2.3
+            //
+            // each string must be parsable into System.Version class object.
+
             msg = null;
-            string str;
-            HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Resources_String.SiteURL + "/files/latestversion.txt");
-            request.Timeout = 0x1388;
+            string str = null;
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(Resources_String.SiteURL + "/files/latestversion.txt");
+            req.Timeout = 5000;
+
             try {
-                using(HttpWebResponse response = (HttpWebResponse)request.GetResponse()) {
-                    statusCode = response.StatusCode;
-                    using(StreamReader reader = new StreamReader(response.GetResponseStream(), Encoding.ASCII)) {
-                        str = reader.ReadToEnd();
+                using(HttpWebResponse res = (HttpWebResponse)req.GetResponse()) {
+                    Stream stream = res.GetResponseStream();
+                    if(stream != null) {
+                        using(StreamReader sr = new StreamReader(stream, Encoding.ASCII)) {
+                            str = sr.ReadToEnd();
+                        }                        
                     }
                 }
             }
             catch(WebException exception) {
-                WebExceptionStatus status = exception.Status;
-                if(status != WebExceptionStatus.NameResolutionFailure) {
-                    if(status == WebExceptionStatus.ProtocolError) {
-                        statusCode = HttpStatusCode.InternalServerError;
-                        if((exception.Response != null) && (exception.Response is HttpWebResponse)) {
-                            statusCode = ((HttpWebResponse)exception.Response).StatusCode;
+                switch(exception.Status) {
+                    case WebExceptionStatus.ProtocolError:
+                        HttpStatusCode status = HttpStatusCode.InternalServerError;
+                        if(exception.Response != null && exception.Response is HttpWebResponse) {
+                            status = ((HttpWebResponse)exception.Response).StatusCode;
                         }
-                        return ((statusCode == HttpStatusCode.NotFound) ? -1 : -2);
-                    }
-                    return -2;
+                        return status == HttpStatusCode.NotFound ? -1 : -2;
+
+                    case WebExceptionStatus.NameResolutionFailure:
+                        return -3;
+
+                    default:
+                        return -2;
                 }
-                return -3;
             }
-            if(!string.IsNullOrEmpty(str)) {
+
+            if(!String.IsNullOrEmpty(str)) {
                 try {
-                    string[] strArray = str.Split(QTUtility.SEPARATOR_CHAR);
-                    Version version = new Version(strArray[0]);
-                    if((version > QTUtility.CurrentVersion) || (((strArray.Length == 1) && (version == QTUtility.CurrentVersion)) && (QTUtility.BetaRevision.Major > 0))) {
-                        msg = version.ToString();
+                    string[] strs = str.Split(QTUtility.SEPARATOR_CHAR);
+                    Version verNew = new Version(strs[0]);
+
+                    if((verNew > QTUtility.CurrentVersion) ||
+                            (strs.Length == 1 && verNew == QTUtility.CurrentVersion && QTUtility.BetaRevision.Major > 0)) {
+                        // New version found!!
+                        //  or, 
+                        // Current is Beta, and Released version found!!
+                        msg = verNew.ToString();
                         return 2;
                     }
-                    if(strArray.Length > 2) {
-                        int num = 0;
+
+                    if(strs.Length > 2) {
                         try {
-                            Version version2 = new Version(strArray[1]);
-                            Version version3 = new Version(strArray[2]);
-                            if((version2 <= QTUtility.CurrentVersion) && (!(version2 == QTUtility.CurrentVersion) || (version3 <= QTUtility.BetaRevision))) {
-                                goto Label_01AB;
+                            Version verBeta = new Version(strs[1]);
+                            Version verBetaRev = new Version(strs[2]);
+
+                            if((verBeta > QTUtility.CurrentVersion) ||
+                                    (verBeta == QTUtility.CurrentVersion && verBetaRev > QTUtility.BetaRevision)) {
+                                // newer Beta found.
+                                msg = strs[1] + " Beta " + verBetaRev.Major;
+                                return 1;
                             }
-                            if(version3.Major == 0) {
-                                msg = strArray[1] + " Alpha " + version3.Minor;
-                            }
-                            else {
-                                msg = strArray[1] + " Beta " + version3.Major;
-                            }
-                            num = 1;
                         }
                         catch {
                         }
-                        return num;
                     }
-                Label_01AB:
                     return 0;
                 }
                 catch(FormatException) {
@@ -117,21 +141,23 @@ namespace QTTabBarLib {
         }
 
         private static bool DayHasCome() {
-            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Quizo\QTTabBar")) {
+            // determines if INTERVAL_CHECK_DAYs have passed since the last check.
+            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(RegConst.Root)) {
                 if(key != null) {
                     long ticks = QTUtility2.GetRegistryValueSafe(key, "LastChecked", -1L);
-                    if((DateTime.MinValue.Ticks < ticks) && (ticks < DateTime.MaxValue.Ticks)) {
-                        TimeSpan span = (DateTime.Now - new DateTime(ticks));
-                        return (span.Days > 5);
+                    if(DateTime.MinValue.Ticks < ticks && ticks < DateTime.MaxValue.Ticks) {
+                        return (DateTime.Now - new DateTime(ticks)).Days > INTERVAL_CHECK_DAY;
                     }
                 }
             }
+
+            // if no reg value
             SaveLastCheck();
             return false;
         }
 
         private static void SaveLastCheck() {
-            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Quizo\QTTabBar", true)) {
+            using(RegistryKey key = Registry.CurrentUser.OpenSubKey(RegConst.Root, true)) {
                 if(key != null) {
                     key.SetValue("LastChecked", DateTime.Now.Ticks, RegistryValueKind.QWord);
                 }
@@ -139,34 +165,44 @@ namespace QTTabBarLib {
         }
 
         private static void ShowMsg(int code, string strOptional) {
-            string text = string.Empty;
+            // show result message.
+            // error when code value is less than 0.
+            // todo: localize
+
+            string strMsg = String.Empty;
             switch(code) {
-                case -4:
-                    text = "Server returned wrong strings.";
-                    break;
-
-                case -3:
-                    text = "Server not found.";
-                    break;
-
-                case -2:
-                    text = "Unknown network error.";
-                    break;
-
                 case -1:
-                    text = "Version file not found (404).";
+                    strMsg = "Version file not found (404).";
+                    break;
+                case -2:
+                    strMsg = "Unknown network error.";
+                    break;
+                case -3:
+                    strMsg = "Server not found.";
+                    break;
+                case -4:
+                    strMsg = "Server returned wrong strings.";
                     break;
 
                 case 0:
-                    text = QTUtility.TextResourcesDic["UpdateCheck"][1];
+                    // current is up to date.
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][2];
                     break;
 
                 case 1:
-                    text = QTUtility.TextResourcesDic["UpdateCheck"][1] + "\n\n" + QTUtility.TextResourcesDic["UpdateCheck"][2] + strOptional;
+                    // beta found.
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][3] + " " + strOptional;
                     break;
 
                 case 2:
-                    if(DialogResult.OK == MessageBox.Show(string.Format(QTUtility.TextResourcesDic["UpdateCheck"][0], strOptional), strMsgCaption, MessageBoxButtons.OKCancel, MessageBoxIcon.Asterisk)) {
+                    // New version found.
+                    if(DialogResult.OK == MessageBox.Show(
+                            QTUtility.TextResourcesDic["UpdateCheck"][0] +
+                            Environment.NewLine + Environment.NewLine + strOptional + Environment.NewLine + Environment.NewLine +
+                            QTUtility.TextResourcesDic["UpdateCheck"][1],
+                            strMsgCaption,
+                            MessageBoxButtons.OKCancel,
+                            MessageBoxIcon.Information)) {
                         try {
                             Process.Start(Resources_String.SiteURL);
                         }
@@ -175,7 +211,9 @@ namespace QTTabBarLib {
                     }
                     return;
             }
-            MessageBox.Show(text, strMsgCaption, MessageBoxButtons.OK, (code < 0) ? MessageBoxIcon.Hand : MessageBoxIcon.Asterisk);
+
+            MessageBox.Show(strMsg, strMsgCaption, MessageBoxButtons.OK,
+                    code < 0 ? MessageBoxIcon.Error : MessageBoxIcon.Information);
         }
     }
 }

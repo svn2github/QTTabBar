@@ -81,11 +81,11 @@ namespace QTTabBarLib {
                         // TODO
                      
                         IntPtr ptr;
-                        if(QTUtility.instanceManager.TryGetButtonBarHandle(this.hwndExplorer, out ptr)) {
+                        if(InstanceManager.TryGetButtonBarHandle(this.hwndExplorer, out ptr)) {
                             QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)13, null, (IntPtr)GetItemCount());
                         }
                      */
-                        bool flag = !QTUtility.IsXP && QTUtility.CheckConfig(Settings.ToggleFullRowSelect);
+                        bool flag = !QTUtility.IsXP && Config.Tweaks.ToggleFullRowSelect;
                         NMLISTVIEW nmlistview2 = (NMLISTVIEW)Marshal.PtrToStructure(msg.LParam, typeof(NMLISTVIEW));
                         if(nmlistview2.uChanged == 8 /*LVIF_STATE*/) {
                             uint num5 = nmlistview2.uNewState & LVIS.SELECTED;
@@ -109,10 +109,10 @@ namespace QTTabBarLib {
                 case LVN.INSERTITEM:
                 case LVN.DELETEITEM:
                     // Handled through undocumented WM_USER+174 message
-                    if(!QTUtility.CheckConfig(Settings.NoShowSubDirTips)) {
+                    if(Config.Tips.ShowSubDirTips) {
                         HideSubDirTip(1);
                     }
-                    if(QTUtility.CheckConfig(Settings.AlternateRowColors) && (ShellBrowser.ViewMode == FVM.DETAILS)) {
+                    if(Config.Tweaks.AlternateRowColors && (ShellBrowser.ViewMode == FVM.DETAILS)) {
                         PInvoke.InvalidateRect(nmhdr.hwndFrom, IntPtr.Zero, true);
                     }
                     ShellViewController.DefWndProc(ref msg);
@@ -140,7 +140,7 @@ namespace QTTabBarLib {
 
                 case LVN.ODSTATECHANGED:
                     // FullRowSelect doesn't look possible anyway, so whatever.
-                    if(!QTUtility.IsXP && QTUtility.CheckConfig(Settings.ToggleFullRowSelect)) {
+                    if(!QTUtility.IsXP && Config.Tweaks.ToggleFullRowSelect) {
                         NMLVODSTATECHANGE nmlvodstatechange = (NMLVODSTATECHANGE)Marshal.PtrToStructure(msg.LParam, typeof(NMLVODSTATECHANGE));
                         if(((nmlvodstatechange.uNewState & 2) == 2) && (ShellBrowser.ViewMode == FVM.DETAILS)) {
                             PInvoke.SendMessage(nmlvodstatechange.hdr.hwndFrom, LVM.REDRAWITEMS, (IntPtr)nmlvodstatechange.iFrom, (IntPtr)nmlvodstatechange.iTo);
@@ -150,7 +150,7 @@ namespace QTTabBarLib {
 
                 case LVN.HOTTRACK:
                     // Handled through WM_MOUSEMOVE.
-                    if(QTUtility.CheckConfig(Settings.ShowTooltipPreviews) || !QTUtility.CheckConfig(Settings.NoShowSubDirTips)) {
+                    if(Config.Tips.ShowTooltipPreviews || Config.Tips.ShowSubDirTips) {
                         NMLISTVIEW nmlistview = (NMLISTVIEW)Marshal.PtrToStructure(msg.LParam, typeof(NMLISTVIEW));
                         int iItem = CorrectHotItem(nmlistview.iItem);
                         if(iHotItem != iItem) {
@@ -182,7 +182,7 @@ namespace QTTabBarLib {
                     // This is just for file renaming, which there's no need to
                     // mess with in Windows 7.
                     ShellViewController.DefWndProc(ref msg);
-                    if(QTUtility.IsXP && !QTUtility.CheckConfig(Settings.ExtWhileRenaming)) {
+                    if(QTUtility.IsXP && Config.Tweaks.KillExtWhileRenaming) {
                         NMLVDISPINFO nmlvdispinfo = (NMLVDISPINFO)Marshal.PtrToStructure(msg.LParam, typeof(NMLVDISPINFO));
                         if(nmlvdispinfo.item.lParam != IntPtr.Zero) {
                             using(IDLWrapper idl = ShellBrowser.ILAppend(nmlvdispinfo.item.lParam)) {
@@ -205,13 +205,13 @@ namespace QTTabBarLib {
         private void SetStyleFlags() {
             if(ShellBrowser.ViewMode != FVM.DETAILS) return;
             uint flags = 0;
-            if(QTUtility.CheckConfig(Settings.DetailsGridLines)) {
+            if(Config.Tweaks.DetailsGridLines) {
                 flags |= LVS_EX.GRIDLINES;
             }
             else {
                 flags &= ~LVS_EX.GRIDLINES;
             }
-            if(QTUtility.CheckConfig(Settings.ToggleFullRowSelect) ^ !QTUtility.IsXP) {
+            if(Config.Tweaks.ToggleFullRowSelect ^ !QTUtility.IsXP) {
                 flags |= LVS_EX.FULLROWSELECT;
             }
             else {
@@ -441,7 +441,7 @@ namespace QTTabBarLib {
 
         private bool HandleCustomDraw(ref Message msg) {
             // TODO this needs to be cleaned
-            if(QTUtility.CheckConfig(Settings.AlternateRowColors) && (ShellBrowser.ViewMode == FVM.DETAILS)) {
+            if(Config.Tweaks.AlternateRowColors && (ShellBrowser.ViewMode == FVM.DETAILS)) {
                 NMLVCUSTOMDRAW structure = (NMLVCUSTOMDRAW)Marshal.PtrToStructure(msg.LParam, typeof(NMLVCUSTOMDRAW));
                 int dwItemSpec = 0;
                 if((ulong)structure.nmcd.dwItemSpec < Int32.MaxValue) {
@@ -455,11 +455,11 @@ namespace QTTabBarLib {
 
                         if(!QTUtility.IsXP) {
                             int num4 = lstColumnFMT[structure.iSubItem];
-                            structure.clrTextBk = QTUtility.ShellViewRowCOLORREF_Background;
-                            structure.clrText = QTUtility.ShellViewRowCOLORREF_Text;
+                            structure.clrTextBk = QTUtility2.MakeCOLORREF(Config.Tweaks.AltRowBackgroundColor);
+                            structure.clrText = QTUtility2.MakeCOLORREF(Config.Tweaks.AltRowForegroundColor);
                             Marshal.StructureToPtr(structure, msg.LParam, false);
                             bool drawingHotItem = (dwItemSpec == GetHotItem());
-                            bool fullRowSel = !QTUtility.CheckConfig(Settings.ToggleFullRowSelect);
+                            bool fullRowSel = !Config.Tweaks.ToggleFullRowSelect;
 
                             msg.Result = (IntPtr)(CDRF.NEWFONT);
                             if(structure.iSubItem == 0 && !drawingHotItem) {
@@ -475,7 +475,7 @@ namespace QTTabBarLib {
                                 if(!fullRowSel || (iListViewItemState & (LVIS.SELECTED | LVIS.DROPHILITED)) == 0) {
                                     using(Graphics graphics = Graphics.FromHdc(structure.nmcd.hdc)) {
                                         if(QTUtility.sbAlternate == null) {
-                                            QTUtility.sbAlternate = new SolidBrush(QTUtility2.MakeColor(QTUtility.ShellViewRowCOLORREF_Background));
+                                            QTUtility.sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
                                         }
                                         graphics.FillRectangle(QTUtility.sbAlternate, structure.nmcd.rc.ToRectangle());
                                     }
@@ -497,8 +497,8 @@ namespace QTTabBarLib {
                             }
                             bool flag3 = false;
                             bool flag4 = false;
-                            bool flag5 = QTUtility.CheckConfig(Settings.DetailsGridLines);
-                            bool flag6 = QTUtility.CheckConfig(Settings.ToggleFullRowSelect) ^ !QTUtility.IsXP;
+                            bool flag5 = Config.Tweaks.DetailsGridLines;
+                            bool flag6 = Config.Tweaks.ToggleFullRowSelect ^ !QTUtility.IsXP;
                             bool flag7 = false;
                             if(QTUtility.IsXP && QTUtility.fSingleClick) {
                                 flag7 = (dwItemSpec == GetHotItem());
@@ -513,7 +513,7 @@ namespace QTTabBarLib {
                             Marshal.StructureToPtr(lvitem, ptr3, false);
                             PInvoke.SendMessage(ListViewController.Handle, LVM.GETITEM, IntPtr.Zero, ptr3);
                             if(QTUtility.sbAlternate == null) {
-                                QTUtility.sbAlternate = new SolidBrush(QTUtility2.MakeColor(QTUtility.ShellViewRowCOLORREF_Background));
+                                QTUtility.sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
                             }
                             using(Graphics graphics2 = Graphics.FromHdc(structure.nmcd.hdc)) {
                                 Rectangle rect = rc.ToRectangle();
@@ -601,7 +601,7 @@ namespace QTTabBarLib {
                                 PInvoke.SetTextColor(structure.nmcd.hdc, QTUtility2.MakeCOLORREF((fListViewHasFocus || flag4) ? SystemColors.HighlightText : SystemColors.WindowText));
                             }
                             else {
-                                PInvoke.SetTextColor(structure.nmcd.hdc, QTUtility.ShellViewRowCOLORREF_Text);
+                                PInvoke.SetTextColor(structure.nmcd.hdc, QTUtility2.MakeCOLORREF(Config.Tweaks.AltRowForegroundColor));
                             }
                             PInvoke.DrawTextExW(structure.nmcd.hdc, lvitem.pszText, -1, ref rc, dwDTFormat, IntPtr.Zero);
                             Marshal.FreeHGlobal(lvitem.pszText);

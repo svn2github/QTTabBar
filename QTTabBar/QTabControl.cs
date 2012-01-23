@@ -58,7 +58,6 @@ namespace QTTabBarLib {
         internal const float FONTSIZE_DIFF = 0.75f;
         private bool fRedrawSuspended;
         private bool fShowSubDirTip;
-        private bool fShowToolTips;
         private bool fSubDirShown;
         private bool fSuppressDoubleClick;
         private bool fSuppressMouseUp;
@@ -99,21 +98,13 @@ namespace QTTabBarLib {
         private VisualStyleRenderer vsr_RPressed;
 
         public event QTabCancelEventHandler CloseButtonClicked;
-
         public event QTabCancelEventHandler Deselecting;
-
         public event ItemDragEventHandler ItemDrag;
-
         public event QTabCancelEventHandler PointedTabChanged;
-
         public event QEventHandler RowCountChanged;
-
         public event EventHandler SelectedIndexChanged;
-
         public event QTabCancelEventHandler Selecting;
-
         public event QTabCancelEventHandler TabCountChanged;
-
         public event QTabCancelEventHandler TabIconMouseDown;
 
         public QTabControl() {
@@ -124,7 +115,14 @@ namespace QTTabBarLib {
             sfTypoGraphic = StringFormat.GenericTypographic;
             sfTypoGraphic.FormatFlags |= StringFormatFlags.NoWrap;
             sfTypoGraphic.Trimming = StringTrimming.EllipsisCharacter;
-            colorSet = new Color[] { QTUtility.TabTextColor_Active, QTUtility.TabTextColor_Inactv, QTUtility.TabHiliteColor, QTUtility.TabTextColor_ActivShdw, QTUtility.TabTextColor_InAtvShdw };
+            colorSet = new Color[] {
+                Config.Skin.TabTextActiveColor,
+                Config.Skin.TabTextInactiveColor,
+                Config.Skin.TabTextHotColor,
+                Config.Skin.TabShadActiveColor,
+                Config.Skin.TabShadInactiveColor,
+                Config.Skin.TabShadHotColor
+            };
             brshActive = new SolidBrush(colorSet[0]);
             brshInactv = new SolidBrush(colorSet[1]);
             timerSuppressDoubleClick = new Timer(components);
@@ -517,7 +515,7 @@ namespace QTTabBarLib {
 
         private static void DrawDriveLetter(Graphics g, string str, Font fnt, Rectangle rctFldImg, bool fSelected) {
             Rectangle layoutRectangle = new Rectangle(rctFldImg.X + 7, rctFldImg.Y + 6, 0x10, 0x10);
-            using(SolidBrush brush = new SolidBrush(QTUtility2.MakeModColor(fSelected ? QTUtility.TabTextColor_ActivShdw : QTUtility.TabTextColor_InAtvShdw))) {
+            using(SolidBrush brush = new SolidBrush(QTUtility2.MakeModColor(fSelected ? Config.Skin.TabShadActiveColor : Config.Skin.TabShadInactiveColor))) {
                 Rectangle rectangle2 = layoutRectangle;
                 rectangle2.Offset(1, 0);
                 g.DrawString(str, fnt, brush, rectangle2);
@@ -535,7 +533,7 @@ namespace QTTabBarLib {
                 g.DrawString(str, fnt, brush, rectangle2);
                 rectangle2.Offset(0, 2);
                 g.DrawString(str, fnt, brush, rectangle2);
-                brush.Color = fSelected ? QTUtility.TabTextColor_Active : QTUtility.TabTextColor_Inactv;
+                brush.Color = fSelected ? Config.Skin.TabTextActiveColor : Config.Skin.TabTextInactiveColor;
                 g.DrawString(str, fnt, brush, layoutRectangle);
             }
         }
@@ -573,7 +571,7 @@ namespace QTTabBarLib {
                     g.DrawImage(bmpFolIconBG, new Rectangle(rect.X - 2, rect.Y - 2, rect.Width + 4, rect.Height + 4));
                 }
                 g.DrawImage(QTUtility.ImageListGlobal.Images[base2.ImageKey], rect);
-                if(QTUtility.CheckConfig(Settings.ShowDriveLetters)) {
+                if(Config.Tabs.ShowDriveLetters) {
                     string pathInitial = ((QTabItem)base2).PathInitial;
                     if(pathInitial.Length > 0) {
                         DrawDriveLetter(g, pathInitial, fntDriveLetter, rect, bSelected);
@@ -934,9 +932,12 @@ namespace QTTabBarLib {
                     }
                     return;
                 }
-                if(((e.Button == MouseButtons.Left) && ((ModifierKeys & Keys.Control) != Keys.Control)) && SelectTab(tabMouseOn)) {
-                    fSuppressDoubleClick = true;
-                    timerSuppressDoubleClick.Enabled = true;
+                if(e.Button == MouseButtons.Left) {
+                    MouseChord chord = QTUtility.MakeMouseChord(MouseChord.Left, ModifierKeys);
+                    if(!Config.Mouse.TabActions.ContainsKey(chord) && SelectTab(tabMouseOn)) {
+                        fSuppressDoubleClick = true;
+                        timerSuppressDoubleClick.Enabled = true;
+                    }
                 }
             }
             draggingTab = tabMouseOn;
@@ -945,7 +946,7 @@ namespace QTTabBarLib {
 
         protected override void OnMouseLeave(EventArgs e) {
             iToolTipIndex = -1;
-            if(fShowToolTips && (toolTip != null)) {
+            if(toolTip != null) {
                 toolTip.Active = false;
             }
             iPointedChanged_LastRaisedIndex = -2;
@@ -975,31 +976,28 @@ namespace QTTabBarLib {
                     PointedTabChanged(this, new QTabCancelEventArgs(null, -1, false, TabControlAction.Deselecting));
                 }
             }
-            if(fShowToolTips) {
-                if(tabMouseOn != null) {
-                    if(((iToolTipIndex != num) && IsHandleCreated) && !string.IsNullOrEmpty(tabMouseOn.ToolTipText)) {
-                        if(toolTip == null) {
-                            toolTip = new ToolTip(components);
-                            toolTip.ShowAlways = true;
-                        }
-                        else {
-                            toolTip.Active = false;
-                        }
-                        string toolTipText = tabMouseOn.ToolTipText;
-                        string str2 = ((QTabItem)tabMouseOn).TooltipText2;
-                        if(!string.IsNullOrEmpty(str2)) {
-                            toolTipText = toolTipText + "\r\n" + str2;
-                        }
-                        iToolTipIndex = num;
-                        toolTip.SetToolTip(this, toolTipText);
-                        toolTip.Active = true;
+            if(tabMouseOn != null) {
+                if(((iToolTipIndex != num) && IsHandleCreated) && !string.IsNullOrEmpty(tabMouseOn.ToolTipText)) {
+                    if(toolTip == null) {
+                        toolTip = new ToolTip(components) { ShowAlways = true };
                     }
-                }
-                else {
-                    iToolTipIndex = -1;
-                    if(toolTip != null) {
+                    else {
                         toolTip.Active = false;
                     }
+                    string toolTipText = tabMouseOn.ToolTipText;
+                    string str2 = ((QTabItem)tabMouseOn).TooltipText2;
+                    if(!string.IsNullOrEmpty(str2)) {
+                        toolTipText = toolTipText + "\r\n" + str2;
+                    }
+                    iToolTipIndex = num;
+                    toolTip.SetToolTip(this, toolTipText);
+                    toolTip.Active = true;
+                }
+            }
+            else {
+                iToolTipIndex = -1;
+                if(toolTip != null) {
+                    toolTip.Active = false;
                 }
             }
             base.OnMouseMove(e);
@@ -1175,51 +1173,54 @@ namespace QTTabBarLib {
 
         public void RefreshOptions(bool fInit) {
             if(fInit) {
-                if(QTUtility.CheckConfig(Settings.MultipleRow1)) {
-                    iMultipleType = 1;
+                if(Config.Tabs.MultipleTabRows) {
+                    iMultipleType = Config.Tabs.ActiveTabOnBottomRow ? 1 : 2;
                 }
-                else if(QTUtility.CheckConfig(Settings.MultipleRow2)) {
-                    iMultipleType = 2;
-                }
-                fDrawFolderImg = QTUtility.CheckConfig(Settings.FolderIcon);
+                fDrawFolderImg = Config.Tabs.ShowFolderIcon;
             }
             else {
-                colorSet = new Color[] { QTUtility.TabTextColor_Active, QTUtility.TabTextColor_Inactv, QTUtility.TabHiliteColor, QTUtility.TabTextColor_ActivShdw, QTUtility.TabTextColor_InAtvShdw };
+                colorSet = new Color[] {
+                    Config.Skin.TabTextActiveColor,
+                    Config.Skin.TabTextInactiveColor,
+                    Config.Skin.TabTextHotColor,
+                    Config.Skin.TabShadActiveColor,
+                    Config.Skin.TabShadInactiveColor,
+                    Config.Skin.TabShadHotColor
+                };
                 brshActive.Color = colorSet[0];
                 brshInactv.Color = colorSet[1];
             }
-            fShowToolTips = QTUtility.CheckConfig(Settings.ShowTooltips);
-            if(QTUtility.CheckConfig(Settings.FixedWidthTabs)) {
+            if(Config.Skin.FixedWidthTabs) {
                 sizeMode = TabSizeMode.Fixed;
                 fLimitSize = false;
             }
             else {
                 sizeMode = TabSizeMode.Normal;
-                fLimitSize = QTUtility.CheckConfig(Settings.LimitedWidthTabs);
+                fLimitSize = true; // Config.LimitedWidthTabs;
             }
-            itemSize = new Size(QTUtility.TabWidth, QTUtility.TabHeight);
-            if((QTUtility.MaxTabWidth >= QTUtility.MinTabWidth) && (QTUtility.MinTabWidth > 9)) {
-                maxAllowedTabWidth = QTUtility.MaxTabWidth;
-                minAllowedTabWidth = QTUtility.MinTabWidth;
+            if((Config.Skin.TabMaxWidth >= Config.Skin.TabMinWidth) && (Config.Skin.TabMinWidth > 9)) {
+                maxAllowedTabWidth = Config.Skin.TabMaxWidth;
+                minAllowedTabWidth = Config.Skin.TabMinWidth;
             }
-            fActiveTxtBold = QTUtility.CheckConfig(Settings.ActiveTabInBold);
-            fForceClassic = QTUtility.CheckConfig(Settings.UseTabSkin);
-            SetFont(QTUtility.TabFont);
-            sizingMargin = QTUtility.TabImageSizingMargin + new Padding(0, 0, 1, 1);
-            if(QTUtility.CheckConfig(Settings.UseTabSkin) && (QTUtility.Path_TabImage.Length > 0)) {
+            itemSize = new Size(maxAllowedTabWidth, Config.Skin.TabHeight);
+            fActiveTxtBold = Config.Skin.ActiveTabInBold;
+            fForceClassic = Config.Skin.UseTabSkin;
+            SetFont(Config.Skin.TabTextFont);
+            sizingMargin = Config.Skin.TabSizeMargin + new Padding(0, 0, 1, 1);
+            if(Config.Skin.UseTabSkin && Config.Skin.TabImageFile.Length > 0) {
                 SetTabImages(QTTabBarClass.CreateTabImage());
             }
             else {
                 SetTabImages(null);
             }
-            tabTextAlignment = QTUtility.CheckConfig(Settings.AlignTabTextCenter) ? StringAlignment.Center : StringAlignment.Near;
-            fAutoSubText = !QTUtility.CheckConfig(Settings.NoRenameAmbTabs);
-            fDrawShadow = QTUtility.CheckConfig(Settings.TabTitleShadows);
-            fDrawCloseButton = QTUtility.CheckConfig(Settings.ShowTabCloseButtons) && !QTUtility.CheckConfig(Settings.TabCloseBtnsWithAlt);
-            fCloseBtnOnHover = QTUtility.CheckConfig(Settings.TabCloseBtnsOnHover);
-            fShowSubDirTip = QTUtility.CheckConfig(Settings.ShowSubDirTipOnTab);
-            if(!fInit && (fDrawFolderImg != QTUtility.CheckConfig(Settings.FolderIcon))) {
-                fDrawFolderImg = QTUtility.CheckConfig(Settings.FolderIcon);
+            tabTextAlignment = Config.Skin.TabTextCentered ? StringAlignment.Center : StringAlignment.Near;
+            fAutoSubText = Config.Tabs.RenameAmbTabs;
+            fDrawShadow = Config.Skin.TabTitleShadows;
+            fDrawCloseButton = Config.Tabs.ShowCloseButtons && !Config.Tabs.CloseBtnsWithAlt;
+            fCloseBtnOnHover = Config.Tabs.CloseBtnsOnHover;
+            fShowSubDirTip = Config.Tabs.ShowSubDirTipOnTab;
+            if(!fInit && (fDrawFolderImg != Config.Tabs.ShowFolderIcon)) {
+                fDrawFolderImg = Config.Tabs.ShowFolderIcon;
                 if(fDrawFolderImg) {
                     foreach(QTabItemBase base2 in TabPages) {
                         base2.ImageKey = base2.ImageKey;
@@ -1275,24 +1276,44 @@ namespace QTTabBarLib {
             if(fntBold != null) {
                 fntBold.Dispose();
             }
-            fntBold = new Font(Font, FontStyle.Bold);
+            fntBold = Font;
+            try {
+                fntBold = new Font(Font, FontStyle.Bold);
+            }
+            catch {}
             if(fnt_Underline != null) {
                 fnt_Underline.Dispose();
             }
-            fnt_Underline = new Font(Font, FontStyle.Underline);
+            fnt_Underline = Font;
+            try {
+                fnt_Underline = new Font(Font, FontStyle.Underline);
+            }
+            catch {}
             if(fntBold_Underline != null) {
                 fntBold_Underline.Dispose();
             }
-            fntBold_Underline = new Font(Font, FontStyle.Underline | FontStyle.Bold);
+            fntBold_Underline = fntBold;
+            try {
+                fntBold_Underline = new Font(fntBold, FontStyle.Underline);    
+            }
+            catch {}
             if(fntSubText != null) {
                 fntSubText.Dispose();
             }
             float sizeInPoints = Font.SizeInPoints;
-            fntSubText = new Font(Font.FontFamily, (sizeInPoints > 8.25f) ? (sizeInPoints - 0.75f) : sizeInPoints);
+            fntSubText = Font;
+            try {
+                fntSubText = new Font(Font.FontFamily, (sizeInPoints > 8.25f) ? (sizeInPoints - 0.75f) : sizeInPoints);   
+            }
+            catch {}
             if(fntDriveLetter != null) {
                 fntDriveLetter.Dispose();
             }
-            fntDriveLetter = new Font(Font.FontFamily, 8.25f);
+            fntDriveLetter = Font;
+            try {
+                fntDriveLetter = new Font(Font.FontFamily, 8.25f);
+            }
+            catch {}
             QTabItemBase.TabFont = Font;
         }
 

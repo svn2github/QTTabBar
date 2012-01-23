@@ -51,43 +51,143 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\x86\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>full</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x86'">
+    <OutputPath>bin\x86\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <Optimize>true</Optimize>
+    <DebugType>pdbonly</DebugType>
+    <PlatformTarget>x86</PlatformTarget>
+    <ErrorReport>prompt</ErrorReport>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug %28No Reg%29|x86'">
+    <OutputPath>bin\x86\Debug %28No Reg%29\</OutputPath>
+    <PlatformTarget>x86</PlatformTarget>
+    <CodeAnalysisIgnoreBuiltInRuleSets>true</CodeAnalysisIgnoreBuiltInRuleSets>
+    <CodeAnalysisIgnoreBuiltInRules>true</CodeAnalysisIgnoreBuiltInRules>
+    <CodeAnalysisFailOnMissingRules>true</CodeAnalysisFailOnMissingRules>
+  </PropertyGroup>
   <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationFramework.Aero" />
+    <Reference Include="Ricciolo.Controls.TreeListView">
+      <HintPath>.\Ricciolo.Controls.TreeListView.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core, Version=3.5.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
     </Reference>
-    <Reference Include="System.Design" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel.Web" />
     <Reference Include="System.Xml.Linq">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
-    <Reference Include="System.Data.DataSetExtensions">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
-    <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase">
       <RequiredTargetFramework>3.0</RequiredTargetFramework>
     </Reference>
+    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AppLauncher.cs" />
+    <Compile Include="AppsManager.cs" />
     <Compile Include="AutoLoader.cs" />
     <Compile Include="Automation\AutomationElement.cs" />
     <Compile Include="Automation\AutomationElementFactory.cs" />
     <Compile Include="Automation\AutomationManager.cs" />
     <Compile Include="BreadcrumbBar.cs" />
-    <Compile Include="ButtonBarOptionForm.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="AbstractListView.cs" />
+    <Compile Include="Constants.cs" />
+    <Compile Include="Interop\SHELLSTATE.cs" />
+    <Compile Include="OptionsDialog\Options03_Tweaks.xaml.cs">
+      <DependentUpon>Options03_Tweaks.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options04_Tooltips.xaml.cs">
+      <DependentUpon>Options04_Tooltips.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options05_General.xaml.cs">
+      <DependentUpon>Options05_General.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options06_Appearance.xaml.cs">
+      <DependentUpon>Options06_Appearance.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options07_Mouse.xaml.cs">
+      <DependentUpon>Options07_Mouse.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options08_Keys.xaml.cs">
+      <DependentUpon>Options08_Keys.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options09_Groups.xaml.cs">
+      <DependentUpon>Options09_Groups.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options10_Apps.xaml.cs">
+      <DependentUpon>Options10_Apps.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options11_ButtonBar.xaml.cs">
+      <DependentUpon>Options11_ButtonBar.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options12_Plugins.xaml.cs">
+      <DependentUpon>Options12_Plugins.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options13_Language.xaml.cs">
+      <DependentUpon>Options13_Language.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options14_About.xaml.cs">
+      <DependentUpon>Options14_About.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options02_Tabs.xaml.cs">
+      <DependentUpon>Options02_Tabs.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\Options01_Window.xaml.cs">
+      <DependentUpon>Options01_Window.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ShellContextMenu.cs" />
+    <Compile Include="EditableHeader.xaml.cs">
+      <DependentUpon>EditableHeader.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="FileFolderEntryBox.xaml.cs">
+      <DependentUpon>FileFolderEntryBox.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="FolderBrowserDialogEx.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="GroupsManager.cs" />
     <Compile Include="HookLibManager.cs" />
+    <Compile Include="Interop\BROWSEINFO.cs" />
     <Compile Include="Interop\ShellConstants.cs" />
     <Compile Include="Interop\TBBUTTON.cs" />
     <Compile Include="Interop\TBBUTTONINFO.cs" />
+    <Compile Include="MarginCombo.xaml.cs">
+      <DependentUpon>MarginCombo.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OptionsDialog\OptionsDialog.xaml.cs">
+      <DependentUpon>OptionsDialog.xaml</DependentUpon>
+    </Compile>
     <Compile Include="RebarController.cs" />
+    <Compile Include="Resources_Image.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources_Image.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Resources_String.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources_String.resx</DependentUpon>
+    </Compile>
     <Compile Include="SafePtr.cs" />
+    <Compile Include="Config.cs" />
+    <Compile Include="Spinner.xaml.cs">
+      <DependentUpon>Spinner.xaml</DependentUpon>
+    </Compile>
     <Compile Include="TreeViewWrapper.cs" />
     <Compile Include="Interop\INameSpaceTreeControl.cs" />
     <Compile Include="Interop\IOleWindow.cs" />
@@ -229,9 +329,6 @@
     </Compile>
     <Compile Include="NativeWindowController.cs" />
     <Compile Include="NavigationCompleteCallback.cs" />
-    <Compile Include="OptionsDialog.cs">
-      <SubType>Form</SubType>
-    </Compile>
     <Compile Include="PathData.cs" />
     <Compile Include="PathList.cs" />
     <Compile Include="Plugin.cs" />
@@ -272,8 +369,6 @@
     </Compile>
     <Compile Include="QTUtility.cs" />
     <Compile Include="QTUtility2.cs" />
-    <Compile Include="Resources_Image.cs" />
-    <Compile Include="Resources_String.cs" />
     <Compile Include="StackDictionary%272.cs" />
     <Compile Include="SubDirTipForm.cs">
       <SubType>Form</SubType>
@@ -295,6 +390,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="TxtEnc.cs" />
+    <Compile Include="WPFUtils.cs" />
     <Compile Include="UpdateChecker.cs" />
     <Compile Include="UpDown.cs">
       <SubType>Component</SubType>
@@ -327,12 +423,12 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Resources_Image.resx">
-      <DependentUpon>Resources_Image.cs</DependentUpon>
-      <SubType>Designer</SubType>
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources_Image.Designer.cs</LastGenOutput>
     </EmbeddedResource>
     <EmbeddedResource Include="Resources_String.resx">
-      <DependentUpon>Resources_String.cs</DependentUpon>
-      <SubType>Designer</SubType>
+      <Generator>PublicResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources_String.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
@@ -352,6 +448,301 @@
       <Install>true</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <Page Include="OptionsDialog\Options03_Tweaks.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options04_Tooltips.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options05_General.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options06_Appearance.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options07_Mouse.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options08_Keys.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options09_Groups.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options10_Apps.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options11_ButtonBar.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options12_Plugins.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options13_Language.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options14_About.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OptionsDialog\Options02_Tabs.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="EditableHeader.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="FileFolderEntryBox.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MarginCombo.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OptionsDialog\Options01_Window.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OptionsDialog\OptionsDialog.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="OptionsDialog\OptionsDialogResources.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Spinner.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ButtonStrip24.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgBack.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCloseButton_Cold.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCloseButton_ColdAlt.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCloseButton_Hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCloseButton_Press.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCurrent.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCurTabCloning.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCurTabDrag.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgFolIconBG.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgForward.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgGroupRoot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgInsertL.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgInsertR.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgLocked.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgNavBack.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgNavFwd.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgNewTab.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgNewWindow.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgOptions_Hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgOptions_NoFocus.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgOptions_SelAndHot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgOptions_Selected.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgSubDirBtnCold.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgSubDirBtnPress.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgUserAppsRoot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_Check.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LB.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LB_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LM.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LM_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MM.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MM_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MT.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MT_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RB.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RB_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RM.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RM_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RT.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_RT_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menuClose.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\menuOpen.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\paypalBtn.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TitleBar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\ButtonStrip16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icoEmpty.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icoOption.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LT.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_LT_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MB.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgVistaMenu_MB_hot.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgCapture.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgNoCapture.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgPlugin16.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgPlugin24.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabAbout.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabApps.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabBBar.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabDeskop.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabGroups.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabKeys.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabLang.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabMisc.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabMouse.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabPlugin.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabSkin.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabTabs.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabTooltips.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabTweaks.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\imgTabWindow.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
@@ -360,4 +751,8 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <UsingTask TaskName="NotifyPropertyWeaverMsBuildTask.WeavingTask" AssemblyFile="$(SolutionDir)Tools\NotifyPropertyWeaverMsBuildTask.dll" />
+  <Target Name="AfterCompile">
+    <NotifyPropertyWeaverMsBuildTask.WeavingTask />
+  </Target>
 </Project>

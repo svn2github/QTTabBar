@@ -100,24 +100,18 @@ namespace QTTabBarLib {
         public static bool InitializeMenuRenderer() {
             bool flag = false;
             bool fVista = false;
-            if(QTUtility.CheckConfig(Settings.NonDefaultMenu)) {
-                if(QTUtility.CheckConfig(Settings.XPStyleMenus)) {
-                    if(nCurrentRenderer != 1) {
-                        menuRenderer = new XPMenuRenderer(true);
-                        nCurrentRenderer = 1;
-                        flag = true;
-                    }
-                }
-                else if(nCurrentRenderer != 2) {
-                    menuRenderer = new VistaMenuRenderer(true);
-                    nCurrentRenderer = 2;
-                    flag = fVista = true;
+            if(QTUtility.IsXP) {
+                // TODO: the menu renderer is OS dependent now.  Not going to change.
+                if(nCurrentRenderer != 1) {
+                    menuRenderer = new XPMenuRenderer(true);
+                    nCurrentRenderer = 1;
+                    flag = true;
                 }
             }
-            else if(nCurrentRenderer != 0) {
-                menuRenderer = new DefaultMenuRenderer();
-                nCurrentRenderer = 0;
-                flag = true;
+            else if(nCurrentRenderer != 2) {
+                menuRenderer = new VistaMenuRenderer(true);
+                nCurrentRenderer = 2;
+                flag = fVista = true;
             }
             if(flag) {
                 SetImageMargin(fVista);

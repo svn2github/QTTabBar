@@ -26,14 +26,12 @@ namespace QTTabBarLib {
     internal sealed class PluginManager {
         public Dictionary<string, string> dicFullNamesMenuRegistered_Sys = new Dictionary<string, string>();
         public Dictionary<string, string> dicFullNamesMenuRegistered_Tab = new Dictionary<string, string>();
-        private Dictionary<string, int> dicMultiplePluginCounter = new Dictionary<string, int>();
-        private Dictionary<string, List<int>> dicMultiplePluginOrders = new Dictionary<string, List<int>>();
         private static Dictionary<string, PluginAssembly> dicPluginAssemblies = new Dictionary<string, PluginAssembly>();
         private Dictionary<string, Plugin> dicPluginInstances = new Dictionary<string, Plugin>();
         private static Dictionary<string, Plugin> dicStaticPluginInstances = new Dictionary<string, Plugin>();
         private int iClosingCount;
         private int iRefCount;
-        private static List<string> lstPluginButtonsOrder = new List<string>();
+        private static List<PluginButton> lstPluginButtonsOrder = new List<PluginButton>();
         private static IEncodingDetector plgEncodingDetector;
         private IFilterCore plgFilterCore;
         private IFilter plgIFilter;
@@ -55,14 +53,6 @@ namespace QTTabBarLib {
 
         public void AddRef() {
             iRefCount++;
-        }
-
-        public void ClearBackgroundMultipleOrders() {
-            dicMultiplePluginOrders.Clear();
-        }
-
-        public void ClearBackgroundMultiples() {
-            dicMultiplePluginCounter.Clear();
         }
 
         public void ClearFilterEngines() {
@@ -100,65 +90,39 @@ namespace QTTabBarLib {
             MessageForm.Show(hwnd, "Error : " + strCase + "\r\nPlugin : \"" + pluginID + "\"\r\nErrorType : " + ex, "Plugin Error", MessageBoxIcon.Hand, 0x7530);
         }
 
-        public int IncrementBackgroundMultiple(PluginInformation pi) {
-            int num;
-            if(dicMultiplePluginCounter.TryGetValue(pi.PluginID, out num)) {
-                dicMultiplePluginCounter[pi.PluginID] = num + 1;
-                return (num + 1);
-            }
-            dicMultiplePluginCounter[pi.PluginID] = 0;
-            return 0;
-        }
-
         public static void Initialize() {
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar\Plugins")) {
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"Plugins\Paths")) {
+                if(key == null) return;
+
+                string[] enabled = Config.Plugin.Enabled;
+                foreach(string str in key.GetValueNames()) {
+                    string path = (string)key.GetValue(str, string.Empty);
+                    if(path.Length > 0) {
+                        PluginAssembly pa = new PluginAssembly(path);
+                        if(pa.PluginInfosExist) {
+                            foreach(PluginInformation information in pa.PluginInformations
+                                    .Where(information => enabled.Contains(information.PluginID))) {
+                                information.Enabled = true;
+                                pa.Enabled = true;
+                                if(information.PluginType == PluginType.Static) {
+                                    LoadStatics(information, pa, false);
+                                }
+                            }                                
+                            dicPluginAssemblies[path] = pa;
+                        }
+                    }
+                }
+            }
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"Plugins")) {
                 if(key != null) {
-                    string[] strArray = QTUtility2.ReadRegBinary<string>("Buttons_Order", key);
-                    string[] array = QTUtility2.ReadRegBinary<string>("Enabled", key);
-                    PluginKey[] keyArray = QTUtility2.ReadRegBinary<PluginKey>("ShortcutKeys", key);
-                    QTUtility.Path_PluginLangFile = (string)key.GetValue("LanguageFile", string.Empty);
-                    using(RegistryKey key2 = key.CreateSubKey("Paths")) {
-                        bool flag = (array != null) && (array.Length > 0);
-                        foreach(string str in key2.GetValueNames()) {
-                            string path = (string)key2.GetValue(str, string.Empty);
-                            if(path.Length > 0) {
-                                PluginAssembly pa = new PluginAssembly(path);
-                                if(pa.PluginInfosExist) {
-                                    if(flag) {
-                                        foreach(PluginInformation information in pa.PluginInformations
-                                                .Where(information => array.Contains(information.PluginID))) {
-                                            information.Enabled = true;
-                                            pa.Enabled = true;
-                                            if(information.PluginType == PluginType.Static) {
-                                                LoadStatics(information, pa, false);
-                                            }
-                                        }
-                                    }
-                                    dicPluginAssemblies[path] = pa;
-                                }
-                            }
+                    PluginButton[] buttons = QTUtility2.ReadRegBinary<PluginButton>("Buttons_Order", key);
+                    string[] keys = QTUtility2.ReadRegBinary<string>("ShortcutKeyIDs", key);
+                    int[][] values = QTUtility2.ReadRegBinary<int[]>("ShortcutKeyValues", key);
+                    if(buttons != null) lstPluginButtonsOrder.AddRange(buttons);
+                    if(keys != null && values != null) {
+                        for(int i = 0; i < Math.Min(keys.Length, values.Length); ++i) {
+                            QTUtility.dicPluginShortcutKeys[keys[i]] = values[i];
                         }
-                    }
-                    if((strArray != null) && (strArray.Length > 0)) {
-                        foreach(string str3 in strArray) {
-                            foreach(PluginAssembly assembly2 in dicPluginAssemblies.Values) {
-                                PluginInformation information2;
-                                if(assembly2.TryGetPluginInformation(str3, out information2)) {
-                                    if(information2.Enabled) {
-                                        lstPluginButtonsOrder.Add(str3);
-                                    }
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if(keyArray != null) {
-                        List<int> list = new List<int>();
-                        foreach(PluginKey key3 in keyArray.Where(key3 => key3.Keys != null)) {
-                            QTUtility.dicPluginShortcutKeys[key3.PluginID] = key3.Keys;
-                            list.AddRange(key3.Keys);
-                        }
-                        QTUtility.PluginShortcutKeysCache = list.ToArray();
                     }
                 }
             }
@@ -305,18 +269,6 @@ namespace QTTabBarLib {
             return dicPluginInstances.ContainsKey(pluginID);
         }
 
-        public void PushBackgroundMultiple(string pluginID, int i) {
-            List<int> list;
-            if(dicMultiplePluginOrders.TryGetValue(pluginID, out list)) {
-                list.Add(i);
-            }
-            else {
-                list = new List<int>();
-                list.Add(i);
-                dicMultiplePluginOrders[pluginID] = list;
-            }
-        }
-
         public void RefreshPluginAssembly(PluginAssembly pa, bool fStatic) {
             foreach(PluginInformation information in pa.PluginInformations) {
                 if(!information.Enabled) {
@@ -373,6 +325,8 @@ namespace QTTabBarLib {
         }
 
         public static bool RemoveFromButtonBarOrder(string pluginID) {
+            // TODO
+            /*
             int index = lstPluginButtonsOrder.IndexOf(pluginID);
             if(index != -1) {
                 lstPluginButtonsOrder.Remove(pluginID);
@@ -401,27 +355,38 @@ namespace QTTabBarLib {
                     return true;
                 }
             }
+             */
             return false;
         }
 
         public static void SaveButtonOrder() {
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar\Plugins")) {
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"Plugins")) {
                 if(key != null) {
                     QTUtility2.WriteRegBinary(lstPluginButtonsOrder.ToArray(), "Buttons_Order", key);
                 }
             }
         }
 
-        public static void SavePluginShortcutKeys() {
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(@"Software\Quizo\QTTabBar\Plugins")) {
-                QTUtility2.WriteRegBinary(QTUtility.dicPluginShortcutKeys.Keys
-                    .Select(str => new PluginKey(str, QTUtility.dicPluginShortcutKeys[str])).ToArray(),
-                    "ShortcutKeys", key);
+        public static void SavePluginAssemblies() {
+            const string RegPath = RegConst.Root + @""; // TODO
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegPath + @"Plugins\Paths")) {
+                foreach(string str in key.GetValueNames()) {
+                    key.DeleteValue(str);
+                }
+                int idx = 0;
+                foreach(PluginAssembly asm in PluginManager.PluginAssemblies) {
+                    key.SetValue((idx++).ToString(), asm.Path);
+                }
             }
         }
 
-        public bool TryGetMultipleOrder(string pluginID, out List<int> order) {
-            return dicMultiplePluginOrders.TryGetValue(pluginID, out order);
+        public static void SavePluginShortcutKeys() {
+            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + @"Plugins")) {
+                string[] keys = QTUtility.dicPluginShortcutKeys.Keys.ToArray();
+                int[][] values = keys.Select(k => QTUtility.dicPluginShortcutKeys[k]).ToArray();
+                QTUtility2.WriteRegBinary(keys, "ShortcutKeyIDs", key);
+                QTUtility2.WriteRegBinary(values, "ShortcutKeyValues", key);
+            }
         }
 
         public bool TryGetPlugin(string pluginID, out Plugin plugin) {
@@ -442,9 +407,6 @@ namespace QTTabBarLib {
             }
             if(fStatic) {
                 dicPluginAssemblies.Remove(pa.Path);
-                QTUtility.PluginShortcutKeysCache = (QTUtility.dicPluginShortcutKeys.Values
-                        .Where(numArray => numArray != null)
-                        .SelectMany(numArray => numArray)).ToArray();
                 SavePluginShortcutKeys();
                 pa.Uninstall();
                 pa.Dispose();
@@ -465,7 +427,7 @@ namespace QTTabBarLib {
             }
         }
 
-        public static List<string> ActivatedButtonsOrder {
+        public static List<PluginButton> ActivatedButtonsOrder {
             get {
                 return lstPluginButtonsOrder;
             }
@@ -516,142 +478,10 @@ namespace QTTabBarLib {
             }
         }
 
-#if false
-    [CompilerGenerated]
-    private sealed class <get_PluginInformations>d__0 : IEnumerable<PluginInformation>, IEnumerator<PluginInformation>, IEnumerable, IEnumerator, IDisposable
-    {
-      private int <>1__state;
-      private PluginInformation <>2__current;
-      public Dictionary<string, PluginAssembly>.ValueCollection.Enumerator <>7__wrap3;
-      public List<PluginInformation>.Enumerator <>7__wrap4;
-      public PluginInformation <info>5__2;
-      public PluginAssembly <pa>5__1;
-      
-      [DebuggerHidden]
-      public <get_PluginInformations>d__0(int <>1__state)
-      {
-        this.<>1__state = <>1__state;
-      }
-      
-      private bool MoveNext()
-      {
-        try
-        {
-          switch (this.<>1__state)
-          {
-            case 0:
-              this.<>1__state = -1;
-              this.<>7__wrap3 = PluginManager.dicPluginAssemblies.Values.GetEnumerator();
-              this.<>1__state = 1;
-              while (this.<>7__wrap3.MoveNext())
-              {
-                this.<pa>5__1 = this.<>7__wrap3.Current;
-                this.<>7__wrap4 = this.<pa>5__1.PluginInformations.GetEnumerator();
-                this.<>1__state = 2;
-                while (this.<>7__wrap4.MoveNext())
-                {
-                  this.<info>5__2 = this.<>7__wrap4.Current;
-                  this.<>2__current = this.<info>5__2;
-                  this.<>1__state = 3;
-                  return true;
-                Label_0097:
-                  this.<>1__state = 2;
-                }
-                this.<>1__state = 1;
-                this.<>7__wrap4.Dispose();
-              }
-              this.<>1__state = -1;
-              this.<>7__wrap3.Dispose();
-              break;
-            
-            case 3:
-              goto Label_0097;
-          }
-          return false;
+        [Serializable]
+        public class PluginButton {
+            public string id { get; set; }
+            public int index { get; set; }
         }
-        fault
-        {
-          ((IDisposable) this).Dispose();
-        }
-      }
-      
-      [DebuggerHidden]
-      IEnumerator<PluginInformation> IEnumerable<PluginInformation>.GetEnumerator()
-      {
-        if (Interlocked.CompareExchange(ref this.<>1__state, 0, -2) == -2)
-        {
-          return this;
-        }
-        return new PluginManager.<get_PluginInformations>d__0(0);
-      }
-      
-      [DebuggerHidden]
-      IEnumerator IEnumerable.GetEnumerator()
-      {
-        return this.System.Collections.Generic.IEnumerable<QTTabBarLib.PluginInformation>.GetEnumerator();
-      }
-      
-      [DebuggerHidden]
-      void IEnumerator.Reset()
-      {
-        throw new NotSupportedException();
-      }
-      
-      void IDisposable.Dispose()
-      {
-        switch (this.<>1__state)
-        {
-          case 1:
-          case 2:
-          case 3:
-            try
-            {
-              switch (this.<>1__state)
-              {
-                case 2:
-                case 3:
-                  try
-                  {
-                  }
-                  finally
-                  {
-                    this.<>1__state = 1;
-                    this.<>7__wrap4.Dispose();
-                  }
-                  break;
-              }
-            }
-            finally
-            {
-              this.<>1__state = -1;
-              this.<>7__wrap3.Dispose();
-            }
-            break;
-          
-          default:
-            return;
-        }
-      }
-      
-      PluginInformation IEnumerator<PluginInformation>.Current
-      {
-        [DebuggerHidden]
-        get
-        {
-          return this.<>2__current;
-        }
-      }
-      
-      object IEnumerator.Current
-      {
-        [DebuggerHidden]
-        get
-        {
-          return this.<>2__current;
-        }
-      }
-    }
-#endif
-
     }
 }

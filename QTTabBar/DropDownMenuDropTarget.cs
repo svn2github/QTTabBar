@@ -38,6 +38,7 @@ namespace QTTabBarLib {
         private bool fEnableShiftKeyTemp;
         private bool fEnterVirtualBottom;
         private bool fIsRootMenu;
+        // TODO: the value of fKeyTargetIsThis seems pretty unintuitive.  Fix it.
         private bool fKeyTargetIsThis;
         private bool fRespondModKeysTemp;
         private bool fShownByKey;
@@ -610,42 +611,17 @@ namespace QTTabBarLib {
         }
 
         private void PasteFiles() {
-            string path = null;
-            if(fKeyTargetIsThis) {
-                path = Path;
-            }
-            else {
-                foreach(QMenuItem item in from ToolStripItem item in DisplayedItems
-                        where item.Selected select item as QMenuItem) {
-                    if(item != null) {
-                        if(item is SubDirTipForm.ToolStripMenuItemEx) {
-                            bool flag2;
-                            if(PathIsExecutable(item.Path, out flag2) && !flag2) {
-                                StringCollection fileDropList = Clipboard.GetFileDropList();
-                                if((fileDropList != null) && (fileDropList.Count > 0)) {
-                                    string str2 = "\"" + fileDropList.StringJoin("\" \"") + "\"";
-                                    MenuItemArguments mia = new MenuItemArguments(item.Path, MenuTarget.File, MenuGenre.Application);
-                                    mia.Argument = str2;
-                                    AppLauncher.Execute(mia, fIsRootMenu ? Handle : IntPtr.Zero);
-                                }
-                                return;
-                            }
-                        }
-                        else if(Directory.Exists(item.TargetPath)) {
-                            path = item.TargetPath;
-                        }
-                    }
-                    break;
-                }
-            }
-            if(!string.IsNullOrEmpty(path)) {
-                ShellMethods.PasteFile(path, hwndDialogParent);
-                if(QTUtility.IsXP) {
-                    DropDownMenuDropTarget root = GetRoot(this);
-                    if(root != null) {
-                        root.Close(ToolStripDropDownCloseReason.ItemClicked);
-                    }
-                }
+            string pathTarget = fKeyTargetIsThis 
+                    ? Path 
+                    : (from ToolStripItem item in DisplayedItems
+                       where item.Selected && item is QMenuItem
+                       select ((QMenuItem)item).Path).FirstOrDefault();
+            if(pathTarget == null) return;
+            ShellMethods.PasteFile(pathTarget, hwndDialogParent);
+            if(!QTUtility.IsXP) return;
+            DropDownMenuDropTarget ddmdtRoot = GetRoot(this);
+            if(ddmdtRoot != null) {
+                ddmdtRoot.Close(ToolStripDropDownCloseReason.ItemClicked);
             }
         }
 
@@ -716,11 +692,11 @@ namespace QTTabBarLib {
                     return true;
             }
             int num = ((int)keyData) | 0x100000;
-            if((num != QTUtility.ShortcutKeys[0x1b]) && (num != QTUtility.ShortcutKeys[0x1c])) {
+            if((num != Config.Keys.Shortcuts[0x1b]) && (num != Config.Keys.Shortcuts[0x1c])) {
                 return base.ProcessCmdKey(ref m, keyData);
             }
             if(!flag) {
-                CopyFileNames(num == QTUtility.ShortcutKeys[0x1b]);
+                CopyFileNames(num == Config.Keys.Shortcuts[0x1b]);
             }
             return true;
         }

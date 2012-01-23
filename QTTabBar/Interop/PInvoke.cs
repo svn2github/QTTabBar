@@ -295,6 +295,8 @@ namespace QTTabBarLib.Interop {
         [DllImport("shell32.dll")]
         public static extern int SHBindToParent(IntPtr pidl, [MarshalAs(UnmanagedType.LPStruct)] Guid riid, out IShellFolder ppv, out IntPtr ppidlLast);
         [DllImport("shell32.dll")]
+        public static extern IntPtr SHBrowseForFolder(ref BROWSEINFO lpbi);
+        [DllImport("shell32.dll")]
         public static extern int SHCreateShellItem(IntPtr pidlParent, IShellFolder psfParent, IntPtr pidl, out IShellItem ppsi);
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         public static extern bool ShellExecuteEx(ref SHELLEXECUTEINFO lpExecInfo);
@@ -342,6 +344,8 @@ namespace QTTabBarLib.Interop {
         public static extern int SHGetKnownFolderPath(ref Guid rfid, int dwFlags, IntPtr hToken, [MarshalAs(UnmanagedType.LPWStr)] out string ppszPath);
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
         public static extern bool SHGetPathFromIDList(IntPtr pidl, StringBuilder pszPath);
+        [DllImport("shell32.dll")]
+        public static extern void SHGetSetSettings(ref SHELLSTATE lpss, uint dwMask, bool bSet);
         [DllImport("shell32.dll")]
         public static extern IntPtr SHLockShared(IntPtr hData, uint dwOtherProcId);
         [DllImport("user32.dll")]

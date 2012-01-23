@@ -16,6 +16,7 @@
 //    along with QTTabBar.  If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -35,6 +36,7 @@ namespace QTTabBarLib {
         private Bitmap bmpRebar;
         private NativeWindowController rebarController;
         private NativeWindowController menuController;
+        private int DefaultRebarCOLORREF = -1;
         private bool MenuHasFocus;
 
         public IntPtr Handle { get; private set; }
@@ -46,7 +48,7 @@ namespace QTTabBarLib {
                 }
             }
             set {
-                using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", false)) {
+                using(RegistryKey key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced", true)) {
                     if(key != null) key.SetValue("AlwaysShowMenus", value ? 1 : 0);
                 }
                 EnsureMenuBarIsCorrect();
@@ -90,11 +92,11 @@ namespace QTTabBarLib {
                 }
             }
 
-            if(QTUtility.CheckConfig(Settings.ToolbarBGColor)) {
-                if(QTUtility.DefaultRebarCOLORREF == -1) {
-                    QTUtility.DefaultRebarCOLORREF = (int)PInvoke.SendMessage(Handle, RB.GETBKCOLOR, IntPtr.Zero, IntPtr.Zero);
+            if(Config.Skin.UseRebarBGColor) {
+                if(DefaultRebarCOLORREF == -1) {
+                    DefaultRebarCOLORREF = (int)PInvoke.SendMessage(Handle, RB.GETBKCOLOR, IntPtr.Zero, IntPtr.Zero);
                 }
-                int num2 = QTUtility2.MakeCOLORREF(QTUtility.RebarBGColor);
+                int num2 = QTUtility2.MakeCOLORREF(Config.Skin.RebarColor);
                 PInvoke.SendMessage(Handle, RB.SETBKCOLOR, IntPtr.Zero, (IntPtr)num2);
             }
 
@@ -110,12 +112,12 @@ namespace QTTabBarLib {
                 textureBrushRebar.Dispose();
                 textureBrushRebar = null;
             }
-            if(!File.Exists(QTUtility.Path_RebarImage)) return;
+            if(!File.Exists(Config.Skin.RebarImageFile)) return;
             try {
-                using(Bitmap bitmap = new Bitmap(QTUtility.Path_RebarImage)) {
+                using(Bitmap bitmap = new Bitmap(Config.Skin.RebarImageFile)) {
                     bmpRebar = new Bitmap(bitmap, bitmap.Size);
                     textureBrushRebar = new TextureBrush(bmpRebar);
-                    if(Path.GetExtension(QTUtility.Path_RebarImage).PathEquals(".bmp")) {
+                    if(Path.GetExtension(Config.Skin.RebarImageFile).PathEquals(".bmp")) {
                         bmpRebar.MakeTransparent(Color.Magenta);
                     }
                 }
@@ -132,10 +134,9 @@ namespace QTTabBarLib {
             int num = (int)PInvoke.SendMessage(Handle, RB.GETBANDCOUNT, IntPtr.Zero, IntPtr.Zero);
             for(int i = 0; i < num; i++) {
                 PInvoke.SendMessage(Handle, RB.GETBANDINFO, (IntPtr)i, ref structure);
-                if(structure.hwndChild == menuController.Handle) {
-                    PInvoke.SendMessage(Handle, RB.SHOWBAND, (IntPtr)i, show ? ((IntPtr)1) : IntPtr.Zero);
-                    return;
-                }
+                if(structure.hwndChild != menuController.Handle) continue;
+                PInvoke.SendMessage(Handle, RB.SHOWBAND, (IntPtr)i, show ? ((IntPtr)1) : IntPtr.Zero);
+                return;
             }
         }
 
@@ -174,25 +175,27 @@ namespace QTTabBarLib {
             }
         }
 
-        public void RefreshBG(bool fRebarBGCanceled) {
-            if(fRebarBGCanceled && QTUtility.DefaultRebarCOLORREF != -1) {
-                // Restore the default BG color
-                PInvoke.SendMessage(Handle, RB.SETBKCOLOR, IntPtr.Zero, (IntPtr)QTUtility.DefaultRebarCOLORREF);
-            }
-            else if(QTUtility.CheckConfig(Settings.ToolbarBGColor)) {
+        public void RefreshBG() {
+            if(Config.Skin.UseRebarBGColor) {
                 // Save the default color and set the new one
-                if(QTUtility.DefaultRebarCOLORREF == -1) {
-                    QTUtility.DefaultRebarCOLORREF = (int)PInvoke.SendMessage(Handle, RB.GETBKCOLOR, IntPtr.Zero, IntPtr.Zero);
+                if(DefaultRebarCOLORREF == -1) {
+                    DefaultRebarCOLORREF = (int)PInvoke.SendMessage(Handle, RB.GETBKCOLOR, IntPtr.Zero, IntPtr.Zero);
                 }
-                int c = QTUtility2.MakeCOLORREF(QTUtility.RebarBGColor);
+                int c = QTUtility2.MakeCOLORREF(Config.Skin.RebarColor);
                 PInvoke.SendMessage(Handle, RB.SETBKCOLOR, IntPtr.Zero, (IntPtr)c);
             }
+            else if(DefaultRebarCOLORREF != -1) {
+                // Restore the default BG color
+                PInvoke.SendMessage(Handle, RB.SETBKCOLOR, IntPtr.Zero, (IntPtr)DefaultRebarCOLORREF);
+                DefaultRebarCOLORREF = -1;
+            }
+
             // Refresh the rebar
             IntPtr hWnd = PInvoke.GetWindowLongPtr(Handle, -8);
             if(hWnd != IntPtr.Zero) {
                 PInvoke.RedrawWindow(hWnd, IntPtr.Zero, IntPtr.Zero, 0x289);
             }
-            if(QTUtility.CheckConfig(Settings.RebarImage)) {
+            if(Config.Skin.UseRebarImage) {
                 CreateRebarImage();
             }
         }
@@ -223,64 +226,109 @@ namespace QTTabBarLib {
                 return false;
             }
 
-            if(m.Msg == WM.ERASEBKGND && (QTUtility.CheckConfig(Settings.ToolbarBGColor) || QTUtility.CheckConfig(Settings.RebarImage))) {
+            if(m.Msg == WM.ERASEBKGND && (Config.Skin.UseRebarBGColor || Config.Skin.UseRebarImage)) {
                 bool fFilled = false;
                 using(Graphics graphics = Graphics.FromHdc(m.WParam)) {
                     RECT rect;
                     PInvoke.GetWindowRect(Handle, out rect);
-                    Rectangle rectangle = new Rectangle(0, 0, rect.Width, rect.Height);
+                    Rectangle rectRebar = new Rectangle(0, 0, rect.Width, rect.Height);
 
                     // Fill the Rebar background color
-                    if(QTUtility.CheckConfig(Settings.ToolbarBGColor)) {
-                        using(SolidBrush brush = new SolidBrush(QTUtility.RebarBGColor)) {
-                            graphics.FillRectangle(brush, rectangle);
+                    if(Config.Skin.UseRebarBGColor) {
+                        using(SolidBrush brush = new SolidBrush(Config.Skin.RebarColor)) {
+                            graphics.FillRectangle(brush, rectRebar);
                             fFilled = true;
                         }
                     }
+                    else if(Config.Skin.RebarStretchMode == StretchMode.Real) {
+                        rebarController.DefWndProc(ref m);
+                    }
 
                     // Draw the Rebar image
-                    if(VisualStyleRenderer.IsSupported && QTUtility.CheckConfig(Settings.RebarImage) && QTUtility.Path_RebarImage.Length > 0) {
+                    if(VisualStyleRenderer.IsSupported && Config.Skin.UseRebarImage && Config.Skin.RebarImageFile.Length > 0) {
                         if(bmpRebar == null) {
                             CreateRebarImage();
                         }
                         if(bmpRebar != null) {
-                            switch(((QTUtility.ConfigValues[11] & 0x60) | (QTUtility.ConfigValues[13] & 1))) {
-                                case 1: { // Stretch on each band
-                                    if(!fFilled) rebarController.DefWndProc(ref m);
-                                    int bandCount = (int)PInvoke.SendMessage(rebarController.Handle, RB.GETBANDCOUNT, IntPtr.Zero, IntPtr.Zero);
-                                    graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                                    RECT rectBand = new RECT();
-                                    RECT rectMargin = new RECT();
-                                    
-                                    // Draw the bitmap on each band
-                                    for(int i = 0; i < bandCount; i++) {
-                                        if(PInvoke.SendMessage(rebarController.Handle, RB.GETRECT, (IntPtr)i, ref rectBand) == IntPtr.Zero) {
-                                            continue;
-                                        }
-                                        PInvoke.SendMessage(rebarController.Handle, RB.GETBANDBORDERS, (IntPtr)i, ref rectMargin);
-                                        rectBand.left   -= !QTUtility.IsXP ? 4 : rectMargin.left;
-                                        rectBand.top    -= rectMargin.top;
-                                        rectBand.right  += rectMargin.right;
-                                        rectBand.bottom += rectMargin.bottom;
-                                        graphics.DrawImage(bmpRebar, rectBand.ToRectangle());
+                            List<Rectangle> rectTargets = new List<Rectangle>();
+                            if(Config.Skin.RebarImageSeperateBars) {
+                                int bandCount = (int)PInvoke.SendMessage(rebarController.Handle, RB.GETBANDCOUNT, IntPtr.Zero, IntPtr.Zero);
+                                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                                RECT rectBand = new RECT();
+                                RECT rectMargin = new RECT();
+                                for(int i = 0; i < bandCount; i++) {
+                                    if(PInvoke.SendMessage(rebarController.Handle, RB.GETRECT, (IntPtr)i, ref rectBand) == IntPtr.Zero) {
+                                        continue;
                                     }
-                                    break;
+                                    PInvoke.SendMessage(rebarController.Handle, RB.GETBANDBORDERS, (IntPtr)i, ref rectMargin);
+                                    rectBand.left -= !QTUtility.IsXP ? 4 : rectMargin.left;
+                                    rectBand.top -= rectMargin.top;
+                                    rectBand.right += rectMargin.right;
+                                    rectBand.bottom += rectMargin.bottom;
+                                    rectTargets.Add(rectBand.ToRectangle());
                                 }
-                                case 0x20: { // Real size
-                                    if(!fFilled) rebarController.DefWndProc(ref m);
-                                    Rectangle destRect = new Rectangle(Point.Empty, bmpRebar.Size);
-                                    graphics.DrawImage(bmpRebar, destRect, destRect, GraphicsUnit.Pixel);
-                                    break;
-                                }
-                                case 0x40: // Tile
-                                    textureBrushRebar = textureBrushRebar ?? new TextureBrush(bmpRebar);
-                                    graphics.FillRectangle(textureBrushRebar, rectangle);
-                                    break;
+                            }
+                            else {
+                                rectTargets.Add(rectRebar);
+                            }
 
-                                default: // Full size
-                                    graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
-                                    graphics.DrawImage(bmpRebar, rectangle);
-                                    break;
+                            foreach(Rectangle destRect in rectTargets) {
+                                switch(Config.Skin.RebarStretchMode) {
+                                    case StretchMode.Real:
+                                        Rectangle rectDest2 = new Rectangle(new Point(0, 0), destRect.Size);
+                                        Rectangle rectBmp = new Rectangle(new Point(0, 0), bmpRebar.Size);
+                                        rectBmp.Intersect(rectDest2);
+                                        rectDest2.Intersect(rectBmp);
+                                        rectDest2.Offset(destRect.Location);
+                                        graphics.DrawImage(bmpRebar, rectDest2, rectBmp, GraphicsUnit.Pixel);
+                                        break;
+                                        
+                                    case StretchMode.Tile:
+                                        textureBrushRebar = textureBrushRebar ?? new TextureBrush(bmpRebar);
+                                        textureBrushRebar.TranslateTransform(destRect.X, destRect.Y);
+                                        graphics.FillRectangle(textureBrushRebar, destRect);
+                                        textureBrushRebar.ResetTransform();
+                                        break;
+
+                                    default: // Full
+                                        // todo: make this a function
+                                        graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+                                        Padding margin = Config.Skin.RebarSizeMargin;
+                                        int left = margin.Left;
+                                        int top = margin.Top;
+                                        int right = margin.Right;
+                                        int bottom = margin.Bottom;
+                                        int vertical = margin.Vertical;
+                                        int horizontal = margin.Horizontal;
+                                        int width = bmpRebar.Width;
+                                        int height = bmpRebar.Height;
+                                        Rectangle[] dstRects = new Rectangle[] {
+                                            new Rectangle(destRect.X, destRect.Y, left, top),
+                                            new Rectangle(destRect.X + left, destRect.Y, destRect.Width - horizontal, top), 
+                                            new Rectangle(destRect.Right - right, destRect.Y, right, top), 
+                                            new Rectangle(destRect.X, destRect.Y + top, left, destRect.Height - vertical), 
+                                            new Rectangle(destRect.X + left, destRect.Y + top, destRect.Width - horizontal, destRect.Height - vertical), 
+                                            new Rectangle(destRect.Right - right, destRect.Y + top, right, destRect.Height - vertical),
+                                            new Rectangle(destRect.X, destRect.Bottom - bottom, left, bottom), 
+                                            new Rectangle(destRect.X + left, destRect.Bottom - bottom, destRect.Width - horizontal, bottom),
+                                            new Rectangle(destRect.Right - right, destRect.Bottom - bottom, right, bottom)
+                                        };
+                                        Rectangle[] srcRects = new Rectangle[] {
+                                            new Rectangle(0, 0, left, top),
+                                            new Rectangle(left, 0, width - horizontal, top),
+                                            new Rectangle(width - right, 0, right, top),
+                                            new Rectangle(0, top, left, height - vertical),
+                                            new Rectangle(left, top, width - horizontal, height - vertical),
+                                            new Rectangle(width - right, top, right, height - vertical),
+                                            new Rectangle(0, height - bottom, left, bottom),
+                                            new Rectangle(left, height - bottom, width - horizontal, bottom),
+                                            new Rectangle(width - right, height - bottom, right, bottom),                                
+                                        };
+                                        for(int i = 0; i < 9; i++) {
+                                            graphics.DrawImage(bmpRebar, dstRects[i], srcRects[i], GraphicsUnit.Pixel);
+                                        }
+                                        break;
+                                }   
                             }
                             fFilled = true;
                         }

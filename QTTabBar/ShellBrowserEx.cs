@@ -55,6 +55,13 @@ namespace QTTabBarLib {
                 folderView = null;
             }
         }
+        
+        public IntPtr GetExplorerHandle() {
+            IntPtr hwnd;
+            shellBrowser.GetWindow(out hwnd);
+            IntPtr parent = PInvoke.GetParent(hwnd);
+            return parent != IntPtr.Zero ? parent : hwnd;
+        }
 
         public int GetFocusedIndex() {
             int focusedIndex;
