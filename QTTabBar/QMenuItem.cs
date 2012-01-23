@@ -159,4 +159,78 @@ namespace QTTabBarLib {
             }
         }
     }
+
+    internal sealed class DirectoryMenuItem : QMenuItem {
+        private DateTime dtDirMod;
+        private EventPack ep;
+        public bool OnceOpened;
+
+        public DirectoryMenuItem(string text)
+            : base(text, MenuTarget.Folder, MenuGenre.Application) {
+        }
+
+        public EventPack EventPack {
+            get {
+                return ep;
+            }
+            set {
+                ep = value;
+            }
+        }
+
+        public DateTime ModifiedDate {
+            get {
+                return dtDirMod;
+            }
+            set {
+                dtDirMod = value;
+            }
+        }
+    }
+
+    internal sealed class MenuItemArguments {
+        public MenuGenre Genre;
+        public int Index;
+        public bool IsBack;
+        public string Path;
+        public MenuTarget Target;
+        public UserApp App;
+        public ShellBrowserEx ShellBrowser;
+
+        public MenuItemArguments(string path, MenuTarget target, MenuGenre genre) {
+            Path = path;
+            Genre = genre;
+            Target = target;
+        }
+
+        public MenuItemArguments(string path, bool fback, int index, MenuGenre genre) {
+            Path = path;
+            IsBack = fback;
+            Index = index;
+            Genre = genre;
+        }
+
+        public MenuItemArguments(UserApp app, ShellBrowserEx shellBrowser, MenuGenre genre) {
+            App = app;
+            Path = app.Path;
+            ShellBrowser = shellBrowser;
+            Genre = genre;
+        }
+    }
+
+    internal enum MenuTarget {
+        Folder,
+        File,
+        VirtualFolder
+    }
+
+    internal enum MenuGenre {
+        Navigation,
+        Branch,
+        History,
+        Group,
+        Application,
+        SubDirTip,
+        RecentFile
+    }
 }

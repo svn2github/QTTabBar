@@ -98,7 +98,7 @@ namespace QTTabBarLib {
         private string strSearch = string.Empty;
         private Timer timerSearchBox_Rearrange;
         private Timer timerSerachBox_Search;
-        private ToolStripEx toolStrip;
+        private ToolStripClasses toolStrip;
 
         public QTButtonBar() {
             InitializeComponent();
@@ -737,7 +737,7 @@ namespace QTTabBarLib {
 
         private void InitializeComponent() {
             components = new Container();
-            toolStrip = new ToolStripEx();
+            toolStrip = new ToolStripClasses();
             toolStrip.SuspendLayout();
             SuspendLayout();
             toolStrip.Dock = DockStyle.Fill;
@@ -1779,6 +1779,66 @@ namespace QTTabBarLib {
                     }
                 }
                 return shellBrowser;
+            }
+        }
+    }
+
+    internal sealed class ImageStrip : IDisposable {
+        private List<Bitmap> lstImages = new List<Bitmap>();
+        private Size size;
+        private Color transparentColor;
+
+        public ImageStrip(Size size) {
+            this.size = size;
+        }
+
+        public void AddStrip(Bitmap bmp) {
+            int width = bmp.Width;
+            int num2 = 0;
+            bool flag = transparentColor != Color.Empty;
+            if(((width % size.Width) != 0) || (bmp.Height != size.Height)) {
+                throw new ArgumentException("size invalid.");
+            }
+            Rectangle rect = new Rectangle(Point.Empty, size);
+            while((width - size.Width) > -1) {
+                Bitmap image = bmp.Clone(rect, PixelFormat.Format32bppArgb);
+                if(flag) {
+                    image.MakeTransparent(transparentColor);
+                }
+                if((lstImages.Count > num2) && (lstImages[num2] != null)) {
+                    using(Graphics graphics = Graphics.FromImage(lstImages[num2])) {
+                        graphics.Clear(Color.Transparent);
+                        graphics.DrawImage(image, 0, 0);
+                        image.Dispose();
+                        goto Label_00E4;
+                    }
+                }
+                lstImages.Add(image);
+            Label_00E4:
+                num2++;
+                width -= size.Width;
+                rect.X += size.Width;
+            }
+        }
+
+        public void Dispose() {
+            foreach(Bitmap bitmap in lstImages) {
+                if(bitmap != null) {
+                    bitmap.Dispose();
+                }
+            }
+            lstImages.Clear();
+        }
+
+        public Bitmap this[int index] {
+            get {
+                return lstImages[index];
+            }
+        }
+
+        public Color TransparentColor {
+            set {
+                transparentColor = value;
             }
         }
     }

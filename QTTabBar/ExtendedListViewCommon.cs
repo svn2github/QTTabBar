@@ -26,7 +26,7 @@ using IDataObject = System.Runtime.InteropServices.ComTypes.IDataObject;
 using Timer = System.Windows.Forms.Timer;
 
 namespace QTTabBarLib {
-    public abstract class ExtendedListViewCommon : AbstractListView {
+    internal abstract class ExtendedListViewCommon : AbstractListView {
 
         #region Delegates
         internal delegate bool DoubleClickHandler(Point pt);

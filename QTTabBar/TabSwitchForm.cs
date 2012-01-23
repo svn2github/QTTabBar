@@ -500,4 +500,16 @@ namespace QTTabBarLib {
             }
         }
     }
+
+    internal sealed class PathData {
+        public string strDisplay;
+        public string strImageKey;
+        public string strPath;
+
+        public PathData(string strDisplay, string strPath, string strImageKey) {
+            this.strDisplay = strDisplay;
+            this.strPath = strPath;
+            this.strImageKey = strImageKey;
+        }
+    }
 }

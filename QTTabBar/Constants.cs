@@ -20,10 +20,17 @@ namespace QTTabBarLib {
 
     // This file will be for various global constants.
 
-    static class RegConst {
+    internal static class RegConst {
         public const string Root = @"Software\QTTabBar\";
         public const string Config = @"Config\";
         public const string Groups = @"Groups\";
         public const string Apps = @"UserApps\";
+    }
+
+    internal static class MC {
+        public const int TAB_FIRST = 0;
+        public const int TAB_OPEN_IDL = 4;
+        public const int TAB_OPEN_IDLS = 9;
+        public const int TAB_REPLACEBYGROUP = 80;
     }
 }

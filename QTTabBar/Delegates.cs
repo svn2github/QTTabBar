@@ -15,6 +15,15 @@
 //    You should have received a copy of the GNU General Public License
 //    along with QTTabBar.  If not, see <http://www.gnu.org/licenses/>.
 
+using System;
+using System.Windows.Forms;
+
 namespace QTTabBarLib {
+    internal delegate void FormMethodInvoker(object obj);
+    internal delegate void ItemRightClickedEventHandler(object sender, ItemRightClickedEventArgs e);
+    internal delegate void MenuReorderedEventHandler(object sender, ToolStripItemClickedEventArgs e);
+    internal delegate void NavigationCompleteCallback(object obj, IntPtr ptr);
+    internal delegate void QEventHandler(object sender, QEventArgs e);
     internal delegate void QTabCancelEventHandler(object sender, QTabCancelEventArgs e);
+    internal delegate void WaitTimeoutCallback(int msec);
 }

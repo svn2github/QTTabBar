@@ -18,5 +18,4 @@
 using System.Windows.Forms;
 
 namespace QTTabBarLib {
-    internal delegate void MenuReorderedEventHandler(object sender, ToolStripItemClickedEventArgs e);
 }

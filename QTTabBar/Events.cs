@@ -15,9 +15,50 @@
 //    You should have received a copy of the GNU General Public License
 //    along with QTTabBar.  If not, see <http://www.gnu.org/licenses/>.
 
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace QTTabBarLib {
+    public sealed class ItemRightClickedEventArgs {
+        private ToolStripItem clickedItem;
+        private int hresult;
+        private bool isKey;
+        private Point pnt;
+
+        public ItemRightClickedEventArgs(ToolStripItem clickedItem, bool fKey, Point pnt) {
+            this.clickedItem = clickedItem;
+            isKey = fKey;
+            this.pnt = pnt;
+        }
+
+        public ToolStripItem ClickedItem {
+            get {
+                return clickedItem;
+            }
+        }
+
+        public int HRESULT {
+            get {
+                return hresult;
+            }
+            set {
+                hresult = value;
+            }
+        }
+
+        public bool IsKey {
+            get {
+                return isKey;
+            }
+        }
+
+        public Point Point {
+            get {
+                return pnt;
+            }
+        }
+    }
+
     public sealed class QEventArgs {
         private ArrowDirection arrowDir;
         private int rowCount;
@@ -39,6 +80,21 @@ namespace QTTabBarLib {
         public int RowCount {
             get {
                 return rowCount;
+            }
+        }
+    }
+
+    internal sealed class QTabCancelEventArgs : TabControlCancelEventArgs {
+        private QTabItemBase tabPage;
+
+        public QTabCancelEventArgs(QTabItemBase tabPage, int tabPageIndex, bool cancel, TabControlAction action)
+            : base(null, tabPageIndex, cancel, action) {
+            this.tabPage = tabPage;
+        }
+
+        new public QTabItemBase TabPage {
+            get {
+                return tabPage;
             }
         }
     }

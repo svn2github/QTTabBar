@@ -23,7 +23,7 @@ using QTTabBarLib.Interop;
 using QTTabBarLib.Automation;
 
 namespace QTTabBarLib {
-    class ExtendedItemsView : ExtendedListViewCommon {
+    internal class ExtendedItemsView : ExtendedListViewCommon {
         private AutomationManager AutoMan;
         private Point lastLButtonPoint;
         private Int64 lastLButtonTime;

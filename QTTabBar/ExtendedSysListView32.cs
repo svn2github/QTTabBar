@@ -24,7 +24,7 @@ using System.Windows.Forms;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
-    class ExtendedSysListView32 : ExtendedListViewCommon {
+    internal class ExtendedSysListView32 : ExtendedListViewCommon {
 
         private NativeWindowController EditController;
         private List<int> lstColumnFMT;

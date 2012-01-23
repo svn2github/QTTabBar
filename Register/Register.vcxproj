@@ -14,6 +14,7 @@
     <ProjectGuid>{E35915FE-ED91-4AE5-B566-F269CD854498}</ProjectGuid>
     <RootNamespace>Register</RootNamespace>
     <Keyword>Win32Proj</Keyword>
+    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">

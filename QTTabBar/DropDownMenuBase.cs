@@ -593,4 +593,71 @@ namespace QTTabBarLib {
             }
         }
     }
+
+    internal sealed class ContextMenuStripEx : ContextMenuStrip {
+        private bool fDefaultShowCheckMargin;
+        private static ToolStripRenderer menuRenderer;
+        private static int nCurrentRenderer;
+
+        private static event EventHandler menuRendererChanged;
+
+        static ContextMenuStripEx() {
+            InitializeMenuRenderer();
+        }
+
+        public ContextMenuStripEx(IContainer container, bool fShowCheckMargin) {
+            if(container != null) {
+                container.Add(this);
+            }
+            fDefaultShowCheckMargin = fShowCheckMargin;
+            ShowCheckMargin = fShowCheckMargin || (nCurrentRenderer == 2);
+            Renderer = menuRenderer;
+            menuRendererChanged = (EventHandler)Delegate.Combine(menuRendererChanged, new EventHandler(ContextMenuStripEx_menuRendererChanged));
+        }
+
+        private void ContextMenuStripEx_menuRendererChanged(object sender, EventArgs e) {
+            if(InvokeRequired) {
+                Invoke(new MethodInvoker(SetRenderer));
+            }
+            else {
+                SetRenderer();
+            }
+        }
+
+        protected override void Dispose(bool disposing) {
+            menuRendererChanged = (EventHandler)Delegate.Remove(menuRendererChanged, new EventHandler(ContextMenuStripEx_menuRendererChanged));
+            base.Dispose(disposing);
+        }
+
+        public void EnsureHandleCreated() {
+            if(!IsHandleCreated) {
+                CreateHandle();
+            }
+        }
+
+        public static void InitializeMenuRenderer() {
+            bool changed = false;
+            if(QTUtility.IsXP) {
+                // TODO: the menu renderer is OS dependent now.  Not going to change.
+                if(nCurrentRenderer != 1) {
+                    menuRenderer = new XPMenuRenderer(false);
+                    nCurrentRenderer = 1;
+                    changed = true;
+                }
+            }
+            else if(nCurrentRenderer != 2) {
+                menuRenderer = new VistaMenuRenderer(false);
+                nCurrentRenderer = 2;
+                changed = true;
+            }
+            if(changed && (menuRendererChanged != null)) {
+                menuRendererChanged(null, EventArgs.Empty);
+            }
+        }
+
+        private void SetRenderer() {
+            Renderer = menuRenderer;
+            ShowCheckMargin = (nCurrentRenderer == 2) || fDefaultShowCheckMargin;
+        }
+    }
 }

@@ -401,4 +401,18 @@ namespace QTTabBarLib {
                         : null);
         }
     }
+
+    internal sealed class EventPack {
+        public EventHandler DirDoubleClickEventHandler;
+        public bool FromTaskBar;
+        public ItemRightClickedEventHandler ItemRightClickEventHandler;
+        public IntPtr MessageParentHandle;
+
+        public EventPack(IntPtr hwnd, ItemRightClickedEventHandler handlerRightClick, EventHandler handlerDirDblClick, bool fFromTaskBar) {
+            MessageParentHandle = hwnd;
+            ItemRightClickEventHandler = handlerRightClick;
+            DirDoubleClickEventHandler = handlerDirDblClick;
+            FromTaskBar = fFromTaskBar;
+        }
+    }
 }

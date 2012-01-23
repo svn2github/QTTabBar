@@ -30,7 +30,7 @@ using BandObjectLib;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
-    public sealed class ThumbnailTooltipForm : Form {
+    internal sealed class ThumbnailTooltipForm : Form {
         private const string EMPTYFILE = "  *empty file";
         private bool fFontAsigned;
         private bool fIsShownByKey;

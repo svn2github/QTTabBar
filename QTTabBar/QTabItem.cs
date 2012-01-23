@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using QTPlugin;
 using QTTabBarLib.Interop;
@@ -288,6 +289,25 @@ namespace QTTabBarLib {
                 fNowSlowTip = false;
                 tooltipText2 = value;
             }
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct LogData : IEquatable<LogData> {
+        public string Path;
+        public byte[] IDL;
+        public int Hash;
+        public bool AutoNav;
+        public LogData(string path, byte[] idl, int hash, bool autoNav) {
+            Path = path;
+            IDL = idl;
+            Hash = hash;
+            AutoNav = autoNav;
+        }
+
+        public bool Equals(LogData other) {
+            return Path.PathEquals(other.Path) &&
+                    (System.IO.Path.IsPathRooted(Path) || (Hash == other.Hash));
         }
     }
 }

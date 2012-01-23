@@ -17,7 +17,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using QTPlugin;
@@ -482,6 +486,285 @@ namespace QTTabBarLib {
         public class PluginButton {
             public string id { get; set; }
             public int index { get; set; }
+        }
+    }
+
+    internal sealed class Plugin {
+        private bool fBackgroundButtonIsEnabled;
+        private bool fBackgroundButtonIsSupported;
+        private IPluginClient pluginClient;
+        private PluginInformation pluginInfo;
+
+        public Plugin(IPluginClient pluginClient, PluginInformation pluginInfo) {
+            this.pluginClient = pluginClient;
+            this.pluginInfo = pluginInfo;
+            fBackgroundButtonIsSupported = ((pluginInfo.PluginType == PluginType.Background) && ((pluginClient is IBarButton) || (pluginClient is IBarCustomItem))) || ((pluginInfo.PluginType == PluginType.BackgroundMultiple) && (pluginClient is IBarMultipleCustomItems));
+        }
+
+        public void Close(EndCode code) {
+            if(pluginClient != null) {
+                try {
+                    pluginClient.Close(code);
+                }
+                catch(Exception exception) {
+                    PluginManager.HandlePluginException(exception, IntPtr.Zero, pluginInfo.Name, "Closing plugin.");
+                }
+                pluginClient = null;
+            }
+            pluginInfo = null;
+        }
+
+        public bool BackgroundButtonEnabled {
+            get {
+                return (fBackgroundButtonIsSupported && fBackgroundButtonIsEnabled);
+            }
+            set {
+                if(fBackgroundButtonIsSupported) {
+                    fBackgroundButtonIsEnabled = value;
+                }
+            }
+        }
+
+        public bool BackgroundButtonSupported {
+            get {
+                return fBackgroundButtonIsSupported;
+            }
+        }
+
+        public IPluginClient Instance {
+            get {
+                return pluginClient;
+            }
+        }
+
+        public PluginInformation PluginInformation {
+            get {
+                return pluginInfo;
+            }
+        }
+    }
+
+    internal sealed class PluginInformation : IDisposable {
+        public string Author;
+        public string Description;
+        public bool Enabled;
+        public Image ImageLarge;
+        public Image ImageSmall;
+        public string Name;
+        public string Path;
+        public string PluginID;
+        public PluginType PluginType;
+        public string[] ShortcutKeyActions;
+        public string TypeFullName;
+        public string Version;
+
+        public PluginInformation(PluginAttribute pluginAtt, string path, string pluginID, string typeFullName) {
+            Author = pluginAtt.Author;
+            Name = pluginAtt.Name;
+            Version = pluginAtt.Version;
+            Description = pluginAtt.Description;
+            PluginType = pluginAtt.PluginType;
+            Path = path;
+            PluginID = pluginID;
+            TypeFullName = typeFullName;
+        }
+
+        public void Dispose() {
+            if(ImageLarge != null) {
+                ImageLarge.Dispose();
+                ImageLarge = null;
+            }
+            if(ImageSmall != null) {
+                ImageSmall.Dispose();
+                ImageSmall = null;
+            }
+        }
+    }
+
+    internal sealed class PluginAssembly : IDisposable {
+        private Assembly assembly;
+        public string Author;
+        public string Description;
+        private Dictionary<string, PluginInformation> dicPluginInformations = new Dictionary<string, PluginInformation>();
+        public bool Enabled;
+        private static string IMGLARGE = "_large";
+        private static string IMGSMALL = "_small";
+        public string Name;
+        public string Path;
+        private static string RESNAME = "Resource";
+        private static Type T_PLUGINATTRIBUTE = typeof(PluginAttribute);
+        public string Title;
+        private static string TYPENAME_PLUGINCLIENT = typeof(IPluginClient).FullName;
+        public string Version;
+
+        public PluginAssembly(string path) {
+            Path = path;
+            Title = Author = Description = Version = Name = string.Empty;
+            if(File.Exists(path)) {
+                try {
+                    assembly = Assembly.Load(File.ReadAllBytes(path));
+                    AssemblyName name = assembly.GetName();
+                    AssemblyTitleAttribute customAttribute = (AssemblyTitleAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyTitleAttribute));
+                    AssemblyCompanyAttribute attribute2 = (AssemblyCompanyAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyCompanyAttribute));
+                    AssemblyDescriptionAttribute attribute3 = (AssemblyDescriptionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyDescriptionAttribute));
+                    Version = name.Version.ToString();
+                    if(customAttribute != null) {
+                        Title = customAttribute.Title;
+                    }
+                    if(attribute2 != null) {
+                        Author = attribute2.Company;
+                    }
+                    if(attribute3 != null) {
+                        Description = attribute3.Description;
+                    }
+                    Name = Title + Version + "(" + path.GetHashCode().ToString("X") + ")";
+                    foreach(Type type in assembly.GetTypes()) {
+                        try {
+                            if(ValidateType(type)) {
+                                PluginAttribute pluginAtt = Attribute.GetCustomAttribute(type, T_PLUGINATTRIBUTE) as PluginAttribute;
+                                if(pluginAtt != null) {
+                                    string pluginID = Name + "+" + type.FullName;
+                                    PluginInformation info = new PluginInformation(pluginAtt, path, pluginID, type.FullName);
+                                    GetImageFromAssembly(assembly, type, info);
+                                    dicPluginInformations[pluginID] = info;
+                                }
+                                else {
+                                    QTUtility2.MakeErrorLog(null, "failed attribute");
+                                }
+                            }
+                        }
+                        catch {
+                        }
+                    }
+                }
+                catch(ReflectionTypeLoadException exception) {
+                    QTUtility2.MakeErrorLog(exception, "Failed to load plugin assembly.\r\n"
+                            + exception.LoaderExceptions.StringJoin("\r\n") + "\r\n" + path);
+                }
+                catch(Exception exception) {
+                    QTUtility2.MakeErrorLog(exception, "Failed to load plugin assembly.\r\n" + path);
+                }
+            }
+        }
+
+        public void Dispose() {
+            assembly = null;
+            foreach(PluginInformation information in dicPluginInformations.Values) {
+                information.Dispose();
+            }
+            dicPluginInformations.Clear();
+        }
+
+        private static void GetImageFromAssembly(Assembly asm, Type type, PluginInformation info) {
+            try {
+                Type type2 = asm.GetType(type.Namespace + "." + RESNAME);
+                if(type2 != null) {
+                    PropertyInfo property = type2.GetProperty(type.Name + IMGLARGE, BindingFlags.NonPublic | BindingFlags.Static);
+                    PropertyInfo info3 = type2.GetProperty(type.Name + IMGSMALL, BindingFlags.NonPublic | BindingFlags.Static);
+                    if(property != null) {
+                        info.ImageLarge = (Image)property.GetValue(null, null);
+                    }
+                    if(info3 != null) {
+                        info.ImageSmall = (Image)info3.GetValue(null, null);
+                    }
+                }
+            }
+            catch {
+            }
+        }
+
+        public Plugin Load(string pluginID) {
+            if(File.Exists(Path)) {
+                try {
+                    PluginInformation information;
+                    if(dicPluginInformations.TryGetValue(pluginID, out information)) {
+                        IPluginClient pluginClient = assembly.CreateInstance(information.TypeFullName) as IPluginClient;
+                        if(pluginClient != null) {
+                            Plugin plugin = new Plugin(pluginClient, information);
+                            IBarButton button = pluginClient as IBarButton;
+                            if(button != null) {
+                                Image imageLarge = information.ImageLarge;
+                                Image imageSmall = information.ImageSmall;
+                                try {
+                                    Image image = button.GetImage(true);
+                                    Image image4 = button.GetImage(false);
+                                    if(image != null) {
+                                        information.ImageLarge = image;
+                                        if(imageLarge != null) {
+                                            imageLarge.Dispose();
+                                        }
+                                    }
+                                    if(image4 != null) {
+                                        information.ImageSmall = image4;
+                                        if(imageSmall != null) {
+                                            imageSmall.Dispose();
+                                        }
+                                    }
+                                }
+                                catch(Exception exception) {
+                                    PluginManager.HandlePluginException(exception, IntPtr.Zero, information.Name, "Getting image from pluging.");
+                                    throw;
+                                }
+                            }
+                            return plugin;
+                        }
+                    }
+                }
+                catch(Exception exception2) {
+                    QTUtility2.MakeErrorLog(exception2, null);
+                }
+            }
+            return null;
+        }
+
+        public bool TryGetPluginInformation(string pluginID, out PluginInformation info) {
+            return dicPluginInformations.TryGetValue(pluginID, out info);
+        }
+
+        public void Uninstall() {
+            try {
+                foreach(Type type in assembly.GetTypes()) {
+                    try {
+                        if(ValidateType(type)) {
+                            MethodInfo method = type.GetMethod("Uninstall", BindingFlags.Public | BindingFlags.Static);
+                            if(method != null) {
+                                method.Invoke(null, null);
+                            }
+                        }
+                    }
+                    catch {
+                    }
+                }
+            }
+            catch(Exception exception) {
+                QTUtility2.MakeErrorLog(exception, "failed uninstall type");
+            }
+        }
+
+        private static bool ValidateType(Type t) {
+            return (((t.IsClass && t.IsPublic) && !t.IsAbstract) && (t.GetInterface(TYPENAME_PLUGINCLIENT) != null));
+        }
+
+        public List<PluginInformation> PluginInformations {
+            get {
+                return new List<PluginInformation>(dicPluginInformations.Values);
+            }
+        }
+
+        public bool PluginInfosExist {
+            get {
+                return (dicPluginInformations.Count > 0);
+            }
+        }
+    }
+
+    [Serializable, StructLayout(LayoutKind.Sequential)]
+    internal struct PluginKey {
+        public string PluginID;
+        public int[] Keys;
+        public PluginKey(string pluginID, int[] keys) {
+            PluginID = pluginID;
+            Keys = keys;
         }
     }
 }

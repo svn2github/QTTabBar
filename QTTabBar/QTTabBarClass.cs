@@ -124,7 +124,7 @@ namespace QTTabBarLib {
         private TabSwitchForm tabSwitcher;
         private Timer timerOnTab;
         private Timer timerSelectionChanged;
-        private ToolStripEx toolStrip;
+        private ToolStripClasses toolStrip;
         private ToolTip toolTipForDD;
         private NativeWindowController travelBtnController;
         private ITravelLogStg TravelLog;
@@ -3396,7 +3396,7 @@ namespace QTTabBarLib {
         }
 
         private void InitializeNavBtns(bool fSync) {
-            toolStrip = new ToolStripEx();
+            toolStrip = new ToolStripClasses();
             buttonBack = new ToolStripButton();
             buttonForward = new ToolStripButton();
             toolStrip.SuspendLayout();

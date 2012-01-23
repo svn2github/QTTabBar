@@ -17,7 +17,6 @@
 
 using System;
 using System.Drawing;
-using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
     public class AbstractListView : IDisposable {
