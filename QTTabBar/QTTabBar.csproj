@@ -101,9 +101,7 @@
   <ItemGroup>
     <Compile Include="AppsManager.cs" />
     <Compile Include="AutoLoader.cs" />
-    <Compile Include="Automation\AutomationElement.cs" />
-    <Compile Include="Automation\AutomationElementFactory.cs" />
-    <Compile Include="Automation\AutomationManager.cs" />
+    <Compile Include="AutomationClasses.cs" />
     <Compile Include="BreadcrumbBar.cs" />
     <Compile Include="AbstractListView.cs" />
     <Compile Include="Constants.cs" />
@@ -184,7 +182,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources_String.resx</DependentUpon>
     </Compile>
-    <Compile Include="SafePtr.cs" />
+    <Compile Include="MiscClasses.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="Spinner.xaml.cs">
       <DependentUpon>Spinner.xaml</DependentUpon>

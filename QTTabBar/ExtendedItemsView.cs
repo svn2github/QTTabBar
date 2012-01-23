@@ -20,7 +20,6 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using QTTabBarLib.Interop;
-using QTTabBarLib.Automation;
 
 namespace QTTabBarLib {
     internal class ExtendedItemsView : ExtendedListViewCommon {

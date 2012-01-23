@@ -841,7 +841,6 @@ namespace QTTabBarLib {
                 }
 #endif
             }
-        Label_02D8:
             return false;
         }
 

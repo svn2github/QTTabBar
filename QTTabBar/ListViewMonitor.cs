@@ -17,7 +17,6 @@
 
 using System;
 using System.Windows.Forms;
-using QTTabBarLib.Automation;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {

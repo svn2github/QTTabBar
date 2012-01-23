@@ -181,12 +181,16 @@ namespace QTTabBarLib {
         }
 
         private class ResxListener : INotifyPropertyChanged, IWeakEventListener {
+            #pragma warning disable 0067 // "The event 'PropertyChanged' is never used"
             public event PropertyChangedEventHandler PropertyChanged;
+            #pragma warning restore 0067
+
             // ReSharper disable MemberCanBePrivate.Local
             // ReSharper disable UnusedAutoPropertyAccessor.Local
             public string Value { get; set; }
             // ReSharper restore UnusedAutoPropertyAccessor.Local
             // ReSharper restore MemberCanBePrivate.Local
+            
             private Resx parent;
 
             public ResxListener(Resx parent) {

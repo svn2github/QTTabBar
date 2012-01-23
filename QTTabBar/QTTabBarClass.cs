@@ -4369,7 +4369,6 @@ namespace QTTabBarLib {
             
             // todo: CLEANNNNNNNNN
             if(!fForceNewWindow) {
-                string str3;
                 NowTabsAddingRemoving = true;
                 bool flag = false;
                 string str4 = null;
@@ -4441,7 +4440,6 @@ namespace QTTabBarLib {
                 NowTabsAddingRemoving = false;
             }
             else {
-                string str;
                 Group g = GroupsManager.GetGroup(groupName);
                 if(g != null && g.Paths.Count > 0) {
                     string path = g.Paths[0];

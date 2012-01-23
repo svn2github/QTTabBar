@@ -179,6 +179,18 @@ namespace QTTabBarLib {
             return !(idl1 == idl2);
         }
 
+        public bool Equals(IDLWrapper other) {
+            return this == other;
+        }
+
+        public override bool Equals(object obj) {
+            return Equals(obj as IDLWrapper);
+        }
+
+        public override int GetHashCode() {
+            return Path == null ? 0 : Path.GetHashCode();
+        }
+
         public bool IsRelativelyEqual(IDLWrapper idl2, IShellFolder relativeTo) {
             const int SHCIDS_CANONICALONLY = 0x10000000;
             return !Equals(idl2, null) && (Equals(this, idl2) ||
