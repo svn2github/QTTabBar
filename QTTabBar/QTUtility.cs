@@ -155,18 +155,14 @@ namespace QTTabBarLib {
             }
         }
 
+        private readonly static string[] strIconExt = new string[] { ".exe", ".lnk", ".ico", ".url", ".sln" };
         public static bool ExtHasIcon(string ext) {
-            if(ext != ".exe" && ext != ".lnk" && ext != ".ico" && ext != ".url") {
-                return (ext == ".sln");
-            }
-            return true;
+            return strIconExt.Contains(ext);
         }
 
+        private readonly static string[] strCompressedExt = new string[] { ".zip", ".lzh", ".cab" };
         public static bool ExtIsCompressed(string ext) {
-            if(ext != ".zip" && ext != ".lzh") {
-                return (ext == ".cab");
-            }
-            return true;
+            return strCompressedExt.Contains(ext);
         }
 
         public static void GetHiddenFileSettings(out bool fShowHidden, out bool fShowSystem) {

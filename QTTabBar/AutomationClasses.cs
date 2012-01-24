@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Windows.Threading;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
@@ -28,117 +29,40 @@ namespace QTTabBarLib {
     // thread.
     // http://msdn.microsoft.com/en-us/library/ee671692%28VS.85%29.aspx
 
-    public class AutomationManager : IDisposable {
+    public static class AutomationManager {
         private static readonly Guid IID_IUIAutomation = new Guid("{30CBE57D-D9D0-452A-AB13-7AC5AC4825EE}");
         private static readonly Guid CLSID_CUIAutomation = new Guid("{FF48DBA4-60EF-4201-AA87-54103EEF594E}");
-        private IUIAutomation pAutomation;
-        private Thread automationThread = new Thread(AutomationThreadEntry);
-        private List<Worker> workerQueue = new List<Worker>();
-        private volatile bool killingThread;
-        private volatile bool threadDying;
-
+        private static IUIAutomation pAutomation;
+        private static Dispatcher automationDispatch;
         public delegate T Query<out T>(AutomationElementFactory factory);
 
-        private interface Worker {
-            void DoWork();
-        }
-
-        private class Worker<T> : Worker {
-            private T ret;
-            private IUIAutomation pAutomation;
-            private Query<T> query;
-
-            public Worker(IUIAutomation pAutomation, Query<T> query) {
-                this.pAutomation = pAutomation;
-                this.query = query;
-                Complete = false;
-            }
-
-            public void DoWork() {
-                try {
-                    using(AutomationElementFactory factory = new AutomationElementFactory(pAutomation)) {
-                        ret = query(factory);
-                    }    
-                }
-                catch(Exception exception) {
-                    QTUtility2.MakeErrorLog(exception, "Automation Thread");
-                }
-                Complete = true;
-            }
-
-            public T GetReturn() {
-                return ret;
-            }
-
-            public bool Complete { get; private set; }
-        }
-
-        public AutomationManager() {
+        static AutomationManager() {
             Guid rclsid = CLSID_CUIAutomation;
             Guid riid = IID_IUIAutomation;
             object obj;
             PInvoke.CoCreateInstance(ref rclsid, IntPtr.Zero, 1, ref riid, out obj);
             pAutomation = obj as IUIAutomation;
-            automationThread.Start(this);
+            Thread automationThread = new Thread(Dispatcher.Run) { IsBackground = true };
+            automationThread.Start();
+            while(true) {
+                automationDispatch = Dispatcher.FromThread(automationThread);
+                if(automationDispatch != null) break;
+                Thread.Sleep(50);
+            }
         }
 
-        ~AutomationManager() {
-            Dispose();
-        }
-
-        public void Dispose() {
-            if(automationThread.ThreadState != ThreadState.Stopped) {
-                lock(automationThread) {
-                    killingThread = true;
-                    while(!threadDying) {
-                        Monitor.PulseAll(automationThread);
-                        Monitor.Wait(automationThread);
-                    }
+        public static T DoQuery<T>(Query<T> query) {
+            return (T)automationDispatch.Invoke(new Func<T>(() => {
+                try {
+                    using(AutomationElementFactory factory = new AutomationElementFactory(pAutomation)) {
+                        return query(factory);
+                    }    
                 }
-            }
-            if(pAutomation != null) {
-                Marshal.ReleaseComObject(pAutomation);
-                pAutomation = null;
-            }
-            GC.SuppressFinalize(this);
-        }
-
-        private static void AutomationThreadEntry(object param) {
-            AutomationManager manager = (AutomationManager)param;
-            lock(manager.automationThread) {
-                // This if statement addresses a weird corner-case:
-                // what if DoQuery or Dispose somehow got the lock
-                // before we did?  If so, we can't Wait here, or 
-                // we'll deadlock.
-                if(manager.workerQueue.Count == 0 && !manager.killingThread) {
-                    Monitor.Wait(manager.automationThread);   
+                catch(Exception exception) {
+                    QTUtility2.MakeErrorLog(exception, "Automation Thread");
+                    return default(T);
                 }
-
-                while(!manager.killingThread) {
-                    foreach(Worker worker in manager.workerQueue) {
-                        worker.DoWork();    
-                    }
-                    manager.workerQueue.Clear();
-                    Monitor.PulseAll(manager.automationThread);
-                    Monitor.Wait(manager.automationThread);
-                }
-                manager.threadDying = true;
-                Monitor.PulseAll(manager.automationThread);
-            }
-        }
-
-        public T DoQuery<T>(Query<T> query) {
-            lock(automationThread) {
-                if(threadDying) return default(T);
-                Worker<T> worker = new Worker<T>(pAutomation, query);
-                workerQueue.Add(worker);
-                do {
-                    Monitor.Pulse(automationThread);
-                    Monitor.Wait(automationThread);
-                } 
-                while(!worker.Complete && !threadDying);
-                return threadDying ? default(T) : worker.GetReturn();
-            }
+            }), DispatcherPriority.Normal);
         }
     }
 

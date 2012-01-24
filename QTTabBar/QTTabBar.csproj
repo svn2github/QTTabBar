@@ -303,7 +303,6 @@
     <Compile Include="MenuItemEx.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="MenuReorderedEventHandler.cs" />
     <Compile Include="MenuUtility.cs" />
     <Compile Include="MessageForm.cs">
       <SubType>Form</SubType>

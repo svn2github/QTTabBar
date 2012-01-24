@@ -23,16 +23,14 @@ using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
     internal class ExtendedItemsView : ExtendedListViewCommon {
-        private AutomationManager AutoMan;
         private Point lastLButtonPoint;
         private Int64 lastLButtonTime;
         private Point lastMouseMovePoint;
         private CachedListItemElement hotElement;
         private CachedListItemElement focusedElement;
 
-        internal ExtendedItemsView(ShellBrowserEx ShellBrowser, IntPtr hwndShellView, IntPtr hwndListView, IntPtr hwndSubDirTipMessageReflect, AutomationManager AutoMan)
+        internal ExtendedItemsView(ShellBrowserEx ShellBrowser, IntPtr hwndShellView, IntPtr hwndListView, IntPtr hwndSubDirTipMessageReflect)
                 : base(ShellBrowser, hwndShellView, hwndListView, hwndSubDirTipMessageReflect) {
-            this.AutoMan = AutoMan;
         }
 
         private AutomationElement ListItemElementFromPoint(AutomationElementFactory factory, Point pt) {
@@ -174,7 +172,7 @@ namespace QTTabBarLib {
                         KeyNextPage = Keys.Down;
                         KeyPrevPage = Keys.Up;
                     }
-                    int pageCount = AutoMan.DoQuery(factory => {
+                    int pageCount = AutomationManager.DoQuery(factory => {
                         AutomationElement elem = factory.FromHandle(Handle);
                         if(elem == null) return -1;
                         return viewMode == FVM.LIST ? elem.GetRowCount() : elem.GetColumnCount();
@@ -244,7 +242,7 @@ namespace QTTabBarLib {
             if(PInvoke.WindowFromPoint(pt) != Handle) {
                 return -1;
             }
-            return AutoMan.DoQuery(factory => {
+            return AutomationManager.DoQuery(factory => {
                 AutomationElement elem = ListItemElementFromPoint(factory, pt);
                 if(elem == null) return -1;
                 hotElement = new CachedListItemElement(elem, this);
@@ -253,7 +251,7 @@ namespace QTTabBarLib {
         }
 
         public override bool HotItemIsSelected() {
-            return AutoMan.DoQuery(factory => {
+            return AutomationManager.DoQuery(factory => {
                 AutomationElement elem = ListItemElementFromPoint(factory, Control.MousePosition);
                 return elem == null ? false : elem.IsSelected();
             });
@@ -267,9 +265,9 @@ namespace QTTabBarLib {
                 return hotElement.LabelRect.Contains(pt);
             }
             else {
-                return AutoMan.DoQuery(factory => {
+                return AutomationManager.DoQuery(factory => {
                     AutomationElement elem = factory.FromPoint(pt);
-                    return elem == null ? false : elem.GetAutomationId() == "System.ItemNameDisplay";
+                    return elem != null && elem.GetAutomationId() == "System.ItemNameDisplay";
                 });
             }
         }
@@ -304,7 +302,7 @@ namespace QTTabBarLib {
                 case LVM.SCROLL: {
                     int amount = msg.WParam.ToInt32();
                     SetRedraw(false);
-                    AutoMan.DoQuery(factory => {
+                    AutomationManager.DoQuery(factory => {
                         AutomationElement elem = factory.FromHandle(Handle);
                         amount /= SystemInformation.MouseWheelScrollDelta;
                         bool dec = amount < 0;
@@ -434,7 +432,7 @@ namespace QTTabBarLib {
             if(!screenCoords) {
                 PInvoke.ClientToScreen(ListViewController.Handle, ref pt);
             }
-            return AutoMan.DoQuery(factory => {
+            return AutomationManager.DoQuery(factory => {
                 AutomationElement elem = factory.FromPoint(pt);
                 if(elem == null) return false;
                 string className = elem.GetClassName();
@@ -449,7 +447,7 @@ namespace QTTabBarLib {
             if(!IsHotTrackingEnabled()) return;
             bool hasFocus = HasFocus();
             bool hasMouse = MouseIsOverListView();
-            int nextItem = AutoMan.DoQuery(factory => {
+            int nextItem = AutomationManager.DoQuery(factory => {
                 AutomationElement elem;
                 if(hasFocus) {
                     elem = factory.FromKeyboardFocus();

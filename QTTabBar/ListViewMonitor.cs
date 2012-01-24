@@ -23,7 +23,6 @@ namespace QTTabBarLib {
     class ListViewMonitor : IDisposable {
         public event EventHandler ListViewChanged;
         
-        private AutomationManager AutoMan;
         private IntPtr hwndShellContainer;
         private NativeWindowController ContainerController;
         private ShellBrowserEx ShellBrowser;
@@ -100,10 +99,7 @@ namespace QTTabBarLib {
                 CurrentListView = new ExtendedSysListView32(ShellBrowser, hwndShellView, hwndListView, hwndSubDirTipMessageReflect);
             }
             else {
-                if(AutoMan == null) {
-                    AutoMan = new AutomationManager();
-                }
-                CurrentListView = new ExtendedItemsView(ShellBrowser, hwndShellView, hwndListView, hwndSubDirTipMessageReflect, AutoMan);
+                CurrentListView = new ExtendedItemsView(ShellBrowser, hwndShellView, hwndListView, hwndSubDirTipMessageReflect);
             }
             CurrentListView.ListViewDestroyed += ListView_Destroyed;
             ListViewChanged(this, null);
@@ -133,10 +129,6 @@ namespace QTTabBarLib {
             if(CurrentListView != null) {
                 CurrentListView.Dispose();
                 CurrentListView = null;
-            }
-            if(AutoMan != null) {
-                AutoMan.Dispose();
-                AutoMan = null;
             }
             fDisposed = true;
         }
