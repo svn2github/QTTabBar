@@ -159,8 +159,8 @@ namespace QTTabBarLib {
         }
 
         public static bool operator ==(IDLWrapper idl1, IDLWrapper idl2) {
-            if(Equals(idl1, idl2)) return true;
-            if(Equals(idl1, null) || Equals(idl2, null)) return false;
+            if(ReferenceEquals(idl1, idl2)) return true;
+            if(ReferenceEquals(idl1, null) || ReferenceEquals(idl2, null)) return false;
             IShellFolder shellFolder = null;
             try {
                 if(PInvoke.SHGetDesktopFolder(out shellFolder) == 0) {
