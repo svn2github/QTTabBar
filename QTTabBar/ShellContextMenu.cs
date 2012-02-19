@@ -100,10 +100,11 @@ namespace QTTabBarLib {
                                             try {
                                                 string parentPath = Path.GetDirectoryName(idlw.Path) ?? "";				// idlw.Path is guaranteed file system...
                                                 if(Directory.Exists(parentPath)) {
-                                                    IntPtr hwndTabBar = InstanceManager.CurrentHandle;
-
-                                                    if(PInvoke.IsWindow(hwndTabBar)) {
-                                                        QTUtility2.SendCOPYDATASTRUCT(hwndTabBar, (IntPtr)0x10, parentPath, IntPtr.Zero);
+                                                    QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
+                                                    if(tabbar == null) {
+                                                        using(IDLWrapper wrapper = new IDLWrapper(parentPath)) {
+                                                            tabbar.OpenNewTabOrWindow(wrapper);    
+                                                        }
                                                     }
                                                     else {
                                                         System.Diagnostics.Process.Start(parentPath);

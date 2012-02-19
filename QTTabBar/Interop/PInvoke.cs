@@ -99,6 +99,8 @@ namespace QTTabBarLib.Interop {
         [DllImport("gdi32.dll")]
         public static extern IntPtr GetCurrentObject(IntPtr hdc, int uObjectType);
         [DllImport("kernel32.dll")]
+        public static extern uint GetCurrentProcessId();
+        [DllImport("kernel32.dll")]
         public static extern int GetCurrentThreadId();
         [DllImport("user32.dll")]
         public static extern IntPtr GetCursor();

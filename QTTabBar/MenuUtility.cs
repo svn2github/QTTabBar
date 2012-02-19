@@ -245,9 +245,20 @@ namespace QTTabBarLib {
 
         public static void GroupMenu_ItemRightClicked(object sender, ItemRightClickedEventArgs e) {
             DropDownMenuReorderable reorderable = (DropDownMenuReorderable)sender;
-            string str = TrackGroupContextMenu(e.ClickedItem.Text, e.IsKey ? e.Point : Control.MousePosition, reorderable.Handle);
-            if(!string.IsNullOrEmpty(str)) {
-                QTUtility2.SendCOPYDATASTRUCT(InstanceManager.CurrentHandle, (IntPtr)0xf30, str, IntPtr.Zero);
+            string path = TrackGroupContextMenu(e.ClickedItem.Text, e.IsKey ? e.Point : Control.MousePosition, reorderable.Handle);
+            if(!string.IsNullOrEmpty(path)) {
+                Action<QTTabBarClass> open = tabBar => {
+                    using(IDLWrapper idlw = new IDLWrapper(path)) {
+                        tabBar.OpenNewTabOrWindow(idlw);
+                    }
+                };
+                QTTabBarClass threadBar = InstanceManager.GetThreadTabBar();
+                if(threadBar != null) {
+                    open(threadBar);
+                }
+                else {
+                    InstanceManager.InvokeMain(open);
+                }
             }
             else {
                 e.HRESULT = 0xfffd;
@@ -308,6 +319,7 @@ namespace QTTabBarLib {
         }
 
         // TODO: what does this do?!
+        // TODO: whatever it does, it should be returning an idl, not a path.
         public static string TrackGroupContextMenu(string groupName, Point pnt, IntPtr pDropDownHandle) {
             string name = string.Empty;
             Group g = GroupsManager.GetGroup(groupName);

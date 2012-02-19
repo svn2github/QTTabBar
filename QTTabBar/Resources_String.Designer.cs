@@ -351,6 +351,15 @@ namespace QTTabBarLib {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to 1 window;{0} windows.
+        /// </summary>
+        public static string TrayIcon {
+            get {
+                return ResourceManager.GetString("TrayIcon", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to A new version of QTTabBar has been released:;Press OK to go to the web site.;Your version of QTTabBar is up to date.;New development version found:.
         /// </summary>
         public static string UpdateCheck {

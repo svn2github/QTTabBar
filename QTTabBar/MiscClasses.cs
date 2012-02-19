@@ -16,9 +16,14 @@
 //    along with QTTabBar.  If not, see <http://www.gnu.org/licenses/>.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
 using System.Text;
+using System.Threading;
 using Microsoft.Win32;
 
 namespace QTTabBarLib {
@@ -166,6 +171,222 @@ namespace QTTabBarLib {
             if(ptr != IntPtr.Zero) {
                 Marshal.FreeHGlobal(ptr);
                 ptr = IntPtr.Zero;
+            }
+        }
+    }
+
+    // Normally, delegates are only serializable if they don't include any
+    // stack variables.  But using this class, we can serialize any delegate.
+    [Serializable]
+    public class SerializeDelegate : ISerializable {
+        public Delegate Delegate { get; private set; }
+
+        public SerializeDelegate(Delegate del) {
+            Delegate = del;
+        }
+
+        public SerializeDelegate(SerializationInfo info, StreamingContext context) {
+            Type delType = (Type)info.GetValue("delegateType", typeof(Type));
+
+            //If it's a "simple" delegate we just read it straight off
+            if(info.GetBoolean("isSerializable")) {
+                Delegate = (Delegate)info.GetValue("delegate", delType);
+            }
+            //otherwise, we need to read its anonymous class
+            else {
+                MethodInfo method = (MethodInfo)info.GetValue("method", typeof(MethodInfo));
+                AnonymousClassWrapper w = (AnonymousClassWrapper)info.GetValue("class", typeof(AnonymousClassWrapper));
+                Delegate = System.Delegate.CreateDelegate(delType, w.obj, method);
+            }
+        }
+
+        void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context) {
+            info.AddValue("delegateType", Delegate.GetType());
+
+            //If it's an "simple" delegate we can serialize it directly
+            if(Delegate != null && (Delegate.Target == null || Delegate.Method.DeclaringType.GetCustomAttributes(
+                    typeof(SerializableAttribute), false).Length > 0)) {
+                info.AddValue("isSerializable", true);
+                info.AddValue("delegate", Delegate);
+            }
+            //otherwise, serialize anonymous class
+            else {
+                info.AddValue("isSerializable", false);
+                info.AddValue("method", Delegate.Method);
+                info.AddValue("class", new AnonymousClassWrapper(Delegate.Method.DeclaringType, Delegate.Target));
+            }
+        }
+
+        [Serializable]
+        private class AnonymousClassWrapper : ISerializable {
+            private Type type;
+            public object obj;
+
+            internal AnonymousClassWrapper(Type bclass, object bobject) {
+                type = bclass;
+                obj = bobject;
+            }
+
+            internal AnonymousClassWrapper(SerializationInfo info, StreamingContext context) {
+                Type classType = (Type)info.GetValue("classType", typeof(Type));
+                obj = Activator.CreateInstance(classType);
+
+                foreach(FieldInfo field in classType.GetFields()) {
+                    //If the field is a delegate
+                    if(typeof(Delegate).IsAssignableFrom(field.FieldType)) {
+                        field.SetValue(obj, ((SerializeDelegate)info.GetValue(field.Name, typeof(SerializeDelegate))).Delegate);
+                    }
+                    //If the field is an anonymous class
+                    else if(!field.FieldType.IsSerializable) {
+                        field.SetValue(obj, ((AnonymousClassWrapper)info.GetValue(field.Name, typeof(AnonymousClassWrapper))).obj);
+                    }
+                    //otherwise
+                    else {
+                        field.SetValue(obj, info.GetValue(field.Name, field.FieldType));
+                    }
+                }
+            }
+
+            void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context) {
+                info.AddValue("classType", type);
+
+                foreach(FieldInfo field in type.GetFields()) {
+                    //See corresponding comments above
+                    if(typeof(Delegate).IsAssignableFrom(field.FieldType)) {
+                        info.AddValue(field.Name, new SerializeDelegate((Delegate)field.GetValue(obj)));
+                    }
+                    else if(!field.FieldType.IsSerializable) {
+                        info.AddValue(field.Name, new AnonymousClassWrapper(field.FieldType, field.GetValue(obj)));
+                    }
+                    else {
+                        info.AddValue(field.Name, field.GetValue(obj));
+                    }
+                }
+            }
+        }
+    }
+
+    internal sealed class StackDictionary<S, T> {
+        private Dictionary<S, T> dictionary;
+        private List<S> lstKeys;
+
+        public StackDictionary() {
+            lstKeys = new List<S>();
+            dictionary = new Dictionary<S, T>();
+        }
+
+        public T Peek() {
+            S local;
+            return popPeekInternal(false, out local);
+        }
+
+        public T Peek(out S key) {
+            return popPeekInternal(false, out key);
+        }
+
+        public T Pop() {
+            S local;
+            return popPeekInternal(true, out local);
+        }
+
+        public T Pop(out S key) {
+            return popPeekInternal(true, out key);
+        }
+
+        private T popPeekInternal(bool fPop, out S lastKey) {
+            if(lstKeys.Count == 0) {
+                throw new InvalidOperationException("This StackDictionary is empty.");
+            }
+            lastKey = lstKeys[lstKeys.Count - 1];
+            T local = dictionary[lastKey];
+            if(fPop) {
+                lstKeys.RemoveAt(lstKeys.Count - 1);
+                dictionary.Remove(lastKey);
+            }
+            return local;
+        }
+
+        public void Push(S key, T value) {
+            lstKeys.Remove(key);
+            lstKeys.Add(key);
+            dictionary[key] = value;
+        }
+
+        public bool Remove(S key) {
+            lstKeys.Remove(key);
+            return dictionary.Remove(key);
+        }
+
+        public int RemoveAllValues(Predicate<T> match) {
+            var removeMe = lstKeys.Where(s => match(dictionary[s])).ToList();
+            foreach(var s in removeMe) {
+                lstKeys.Remove(s);
+                dictionary.Remove(s);
+            }
+            return removeMe.Count;
+        }
+
+        public bool TryGetValue(S key, out T value) {
+            return dictionary.TryGetValue(key, out value);
+        }
+
+        public int Count { get { return lstKeys.Count; } }
+
+        public ICollection<S> Keys { get { return dictionary.Keys; } }
+
+        public ICollection<T> Values { get { return dictionary.Values; } }
+    }
+
+    internal class Keychain : IDisposable {
+        private ReaderWriterLock rwlock;
+        private bool write;
+
+        public Keychain(ReaderWriterLock rwlock, bool write) {
+            this.rwlock = rwlock;
+            this.write = write;
+            if(write) {
+                rwlock.AcquireWriterLock(Timeout.Infinite);
+            }
+            else {
+                rwlock.AcquireReaderLock(Timeout.Infinite);
+            }
+        }
+
+        public void Dispose() {
+            if(rwlock == null) return;
+            if(write) {
+                rwlock.ReleaseWriterLock();
+            }
+            else {
+                rwlock.ReleaseReaderLock();
+            }
+            rwlock = null;
+        }
+    }
+
+    // Delegate.BeginInvoke is stupid because it leaks if you don't call EndInvoke.
+    // This class implements fire-and-forget functionality.
+    internal static class AsyncHelper {
+        private class TargetInfo {
+            public TargetInfo(Delegate d, object[] args) {
+                Target = d;
+                Args = args;
+            }
+            public readonly Delegate Target;
+            public readonly object[] Args;
+        }
+
+        public static void BeginInvoke(Delegate d, params object[] args) {
+            ThreadPool.QueueUserWorkItem(DynamicInvokeCallback, new TargetInfo(d, args));
+        }
+
+        private static void DynamicInvokeCallback(object state) {
+            TargetInfo ti = (TargetInfo)state;
+            try {
+                ti.Target.DynamicInvoke(ti.Args);   
+            }
+            catch(Exception ex) {
+                QTUtility2.MakeErrorLog(ex, "AsyncHelper");
             }
         }
     }

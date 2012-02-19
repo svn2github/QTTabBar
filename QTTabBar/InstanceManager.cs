@@ -17,284 +17,450 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.Linq;
+using System.ServiceModel;
+using System.ServiceModel.Channels;
 using System.Threading;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
     internal static class InstanceManager {
-        private static Dictionary<IntPtr, IntPtr> dicBtnBarHandle = new Dictionary<IntPtr, IntPtr>();
+        private static Dictionary<Thread, QTTabBarClass> dictTabInstances = new Dictionary<Thread, QTTabBarClass>();
+        private static Dictionary<Thread, QTButtonBar> dictBBarInstances = new Dictionary<Thread, QTButtonBar>();
+        private static StackDictionary<IntPtr, QTTabBarClass> sdTabHandles = new StackDictionary<IntPtr, QTTabBarClass>();
         private static ReaderWriterLock rwLockBtnBar = new ReaderWriterLock();
         private static ReaderWriterLock rwLockTabBar = new ReaderWriterLock();
-        private static StackDictionary<IntPtr, InstancePair> sdInstancePair = new StackDictionary<IntPtr, InstancePair>();
+        private static DuplexClient commClient;
+        private static bool isServer;
 
-        public static void AddButtonBarHandle(IntPtr hwndExplr, IntPtr hwndBtnBar) {
-            try {
-                rwLockBtnBar.AcquireWriterLock(-1);
-                dicBtnBarHandle[hwndExplr] = hwndBtnBar;
+        // Server-only stuff
+        private static ServiceHost serviceHost;
+        private static List<ICommClient> callbacks = new List<ICommClient>();
+        private static StackDictionary<IntPtr, ICommClient> sdInstances = new StackDictionary<IntPtr, ICommClient>();
+        private static TrayIcon trayIcon;
+
+        #region Comm Classes and Interfaces
+
+        private class DuplexClient : DuplexClientBase<ICommService> {
+            public DuplexClient(InstanceContext callbackInstance, Binding binding, EndpointAddress remoteAddress)
+                : base(callbackInstance, binding, remoteAddress) {
             }
-            finally {
-                rwLockBtnBar.ReleaseWriterLock();
-            }
+            public new ICommService Channel { get { return base.Channel; } }
         }
 
-        public static IEnumerable<IntPtr> ButtonBarHandles() {
-            try {
-                rwLockBtnBar.AcquireReaderLock(-1);
-                foreach(IntPtr hwndBB in dicBtnBarHandle.Values) {
-                    yield return hwndBB;
+        [ServiceContract(SessionMode = SessionMode.Required, CallbackContract = typeof(ICommClient))]
+        private interface ICommService {
+            [OperationContract]
+            void Subscribe();
+
+            [OperationContract]
+            void PushInstance(IntPtr hwnd);
+
+            [OperationContract]
+            void DeleteInstance(IntPtr hwnd);
+
+            [OperationContract]
+            bool IsMainProcess();
+
+            [OperationContract]
+            int GetTotalInstanceCount();
+
+            [OperationContract]
+            void AddToTrayIcon(IntPtr tabBarHandle, IntPtr explorerHandle, string currentPath, string[] tabNames, string[] tabPaths);
+
+            [OperationContract]
+            void RemoveFromTrayIcon(IntPtr tabBarHandle);
+
+            [OperationContract]
+            void SelectTabOnOtherTabBar(IntPtr tabBarHandle, int index);
+
+            [OperationContract]
+            bool ExecuteOnMainProcess(byte[] encodedAction, bool async);
+
+            [OperationContract]
+            void ExecuteOnServerProcess(byte[] encodedAction, bool async);
+
+            [OperationContract]
+            void Broadcast(byte[] encodedAction);
+        }
+
+        [ServiceBehavior(
+                ConcurrencyMode = ConcurrencyMode.Reentrant,
+                InstanceContextMode = InstanceContextMode.PerSession)]
+        private class CommService : ICommService {
+
+            private static bool IsDead(ICommClient client) {
+                ICommunicationObject ico = client as ICommunicationObject;
+                return ico != null && ico.State != CommunicationState.Opened;                
+            }
+
+            private static void CheckConnections() {
+                callbacks.RemoveAll(IsDead);
+                sdInstances.RemoveAllValues(c => !callbacks.Contains(c));
+            }
+
+            private static ICommClient GetCallback() {
+                return OperationContext.Current.GetCallbackChannel<ICommClient>();
+            }
+
+            public int GetTotalInstanceCount() {
+                CheckConnections();
+                return sdInstances.Count;
+            }
+
+            public void AddToTrayIcon(IntPtr tabBarHandle, IntPtr explorerHandle, string currentPath, string[] tabNames, string[] tabPaths) {
+                if(trayIcon == null) trayIcon = new TrayIcon();
+                trayIcon.AddToTrayIcon(tabBarHandle, explorerHandle, currentPath, tabNames, tabPaths);
+            }
+
+            public void RemoveFromTrayIcon(IntPtr tabBarHandle) {
+                if(trayIcon == null) trayIcon = new TrayIcon();
+                trayIcon.RestoreWindow(tabBarHandle);
+            }
+
+            public void SelectTabOnOtherTabBar(IntPtr tabBarHandle, int index) {
+                ICommClient comm;
+                if(sdInstances.TryGetValue(tabBarHandle, out comm)) {
+                    comm.Execute(DelToByte(new Action(() => {
+                        using(new Keychain(rwLockTabBar, false)) {
+                            QTTabBarClass tabbar;
+                            if(sdTabHandles.TryGetValue(tabBarHandle, out tabbar)) {
+                                tabbar.SelectTab(index);
+                            }
+                        }
+                    })));
                 }
             }
-            finally {
-                rwLockBtnBar.ReleaseReaderLock();
-            }
-        }
 
-        public static IEnumerable<IntPtr> ExplorerHandles() {
-            try {
-                rwLockTabBar.AcquireReaderLock(-1);
-                foreach(IntPtr hwnd in sdInstancePair.Keys) {
-                    yield return hwnd;
-                }
-            }
-            finally {
-                rwLockTabBar.ReleaseReaderLock();
-            }
-        }
-
-        public static QTTabBarClass GetTabBar(IntPtr hwndExplr) {
-            QTTabBarClass class2;
-            try {
-                InstancePair pair;
-                rwLockTabBar.AcquireReaderLock(-1);
-                if((sdInstancePair.TryGetValue(hwndExplr, out pair) && (pair.tabBar != null)) && pair.tabBar.IsHandleCreated) {
-                    return pair.tabBar;
-                }
-                class2 = null;
-            }
-            finally {
-                rwLockTabBar.ReleaseReaderLock();
-            }
-            return class2;
-        }
-
-        public static IntPtr GetTabBarHandle(IntPtr hwndExplr) {
-            IntPtr zero;
-            try {
-                InstancePair pair;
-                rwLockTabBar.AcquireReaderLock(-1);
-                if((sdInstancePair.TryGetValue(hwndExplr, out pair) && (pair.tabBar != null)) && pair.tabBar.IsHandleCreated) {
-                    return pair.hwnd;
-                }
-                zero = IntPtr.Zero;
-            }
-            finally {
-                rwLockTabBar.ReleaseReaderLock();
-            }
-            return zero;
-        }
-
-        public static bool NextInstanceExists() {
-            try {
-                rwLockTabBar.AcquireWriterLock(-1);
-                while(sdInstancePair.Count > 0) {
-                    IntPtr ptr;
-                    InstancePair pair = sdInstancePair.Peek(out ptr);
-                    if(((pair.tabBar != null) && pair.tabBar.IsHandleCreated) && (PInvoke.IsWindow(pair.hwnd) && PInvoke.IsWindow(ptr))) {
-                        return true;
-                    }
-                    sdInstancePair.Pop();
-                }
-            }
-            finally {
-                rwLockTabBar.ReleaseWriterLock();
-            }
-            return false;
-        }
-
-        public static void PushInstance(IntPtr hwndExplr, QTTabBarClass tabBar) {
-            try {
-                rwLockTabBar.AcquireWriterLock(-1);
-                sdInstancePair.Push(hwndExplr, new InstancePair(tabBar, tabBar.Handle));
-            }
-            finally {
-                rwLockTabBar.ReleaseWriterLock();
-            }
-        }
-
-        public static void RemoveButtonBarHandle(IntPtr hwndExplr) {
-            try {
-                rwLockBtnBar.AcquireWriterLock(-1);
-                dicBtnBarHandle.Remove(hwndExplr);
-            }
-            finally {
-                rwLockBtnBar.ReleaseWriterLock();
-            }
-        }
-
-        public static bool RemoveInstance(IntPtr hwndExplr, QTTabBarClass tabBar) {
-            bool flag2;
-            try {
-                rwLockTabBar.AcquireWriterLock(-1);
-                bool flag = tabBar == CurrentTabBar;
-                sdInstancePair.Remove(hwndExplr);
-                flag2 = flag;
-            }
-            finally {
-                rwLockTabBar.ReleaseWriterLock();
-            }
-            return flag2;
-        }
-
-        public static IEnumerable<IntPtr> TabBarHandles() {
-            try {
-                rwLockTabBar.AcquireReaderLock(-1);
-                foreach(InstancePair ip in sdInstancePair.Values) {
-                    yield return ip.hwnd;
-                }
-            }
-            finally {
-                rwLockTabBar.ReleaseReaderLock();
-            }
-        }
-
-        public static bool TryGetButtonBarHandle(IntPtr hwndExplr, out IntPtr hwndButtonBar) {
-            try {
-                IntPtr ptr;
-                rwLockBtnBar.AcquireReaderLock(-1);
-                if(dicBtnBarHandle.TryGetValue(hwndExplr, out ptr) && PInvoke.IsWindow(ptr)) {
-                    hwndButtonBar = ptr;
+            public bool ExecuteOnMainProcess(byte[] encodedAction, bool async) {
+                CheckConnections();
+                if(IsMainProcess()) {
                     return true;
                 }
-                hwndButtonBar = IntPtr.Zero;
+                else if(sdInstances.Count == 0) {
+                    return false;
+                }
+                ICommClient callback = sdInstances.Peek();
+                if(async) {
+                    AsyncHelper.BeginInvoke(new Action(() => {
+                        try {
+                            if(!IsDead(callback)) {
+                                callback.Execute(encodedAction);
+                            }
+                        }
+                        catch {
+                        }
+                    }));
+                }
+                else {
+                    callback.Execute(encodedAction);
+                }
+                return false;
             }
-            finally {
-                rwLockBtnBar.ReleaseReaderLock();
+
+            public void ExecuteOnServerProcess(byte[] encodedAction, bool async) {
+                Delegate action = ByteToDel(encodedAction);
+                if(async) {
+                    AsyncHelper.BeginInvoke(action);
+                }
+                else {
+                    try {
+                        action.DynamicInvoke();
+                    }
+                    catch(Exception ex) {
+                        QTUtility2.MakeErrorLog(ex);
+                    }
+                }
             }
+
+            public void Broadcast(byte[] encodedAction) {
+                ICommClient sender = GetCallback();
+                CheckConnections();
+                List<ICommClient> targets = callbacks.Where(c => c != sender).ToList();
+                AsyncHelper.BeginInvoke(new Action(() => {
+                    foreach(ICommClient target in targets) {
+                        try {
+                            if(!IsDead(target)) {
+                                target.Execute(encodedAction);
+                            }
+                        }
+                        catch {
+                        }
+                    }
+                }));
+            }
+
+            public void DeleteInstance(IntPtr hwnd) {
+                CheckConnections();
+                sdInstances.Remove(hwnd);
+            }
+
+            public bool IsMainProcess() {
+                CheckConnections();
+                return sdInstances.Count > 0 && GetCallback() == sdInstances.Peek();
+            }
+
+            public void Subscribe() {
+                ICommClient callback = GetCallback();
+                if(!callbacks.Contains(callback)) {
+                    callbacks.Add(callback);
+                }
+            }
+
+            public void PushInstance(IntPtr hwnd) {
+                CheckConnections();
+                if(!callbacks.Contains(GetCallback())) return; // hmmm....
+                sdInstances.Push(hwnd, GetCallback());
+            }
+        }
+
+        private interface ICommClient {
+            [OperationContract]
+            void Execute(byte[] encodedAction);
+        }
+
+        [CallbackBehavior(ConcurrencyMode = ConcurrencyMode.Reentrant, UseSynchronizationContext = false)]
+        private class CommClient : ICommClient {
+            public void Execute(byte[] encodedAction) {
+                try {
+                    ByteToDel(encodedAction).DynamicInvoke();
+                }
+                catch(Exception ex) {
+                    QTUtility2.MakeErrorLog(ex);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Utility Methods
+
+        private static byte[] DelToByte(Delegate del) {
+            return QTUtility.ObjectToByteArray(new SerializeDelegate(del));
+        }
+
+        private static Delegate ByteToDel(byte[] buf) {
+            return ((SerializeDelegate)QTUtility.ByteArrayToObject(buf)).Delegate;
+        }
+
+        #endregion
+
+        public static void Initialize(bool skipServer = false) {
+            uint desktopPID;
+            PInvoke.GetWindowThreadProcessId(WindowUtils.GetShellTrayWnd(), out desktopPID);
+            isServer = desktopPID == PInvoke.GetCurrentProcessId();
+
+            const string PipeName = "QTTabBarPipe";
+            string address = "net.pipe://localhost/" + PipeName + desktopPID;
+            Thread thread = null;
+
+            // WFC channels should never be opened on any thread that has a message loop!
+            // Otherwise reentrant calls will deadlock, for some reason.
+            // So, create a new thread and open the channels there.
+            thread = new Thread(() => {
+                if(isServer && !skipServer) {
+                    serviceHost = new ServiceHost(
+                            typeof(CommService),
+                            new Uri[] { new Uri(address) });
+                    serviceHost.AddServiceEndpoint(
+                            typeof(ICommService),
+                            new NetNamedPipeBinding(NetNamedPipeSecurityMode.None) { ReceiveTimeout = TimeSpan.MaxValue },
+                            new Uri(address));
+                    serviceHost.Open();
+                }
+                
+
+                commClient = new DuplexClient(new InstanceContext(new CommClient()),
+                        new NetNamedPipeBinding(NetNamedPipeSecurityMode.None),
+                        new EndpointAddress(address));
+                try {
+                    commClient.Open();
+                    commClient.Channel.Subscribe();
+                    using(new Keychain(rwLockTabBar, false)) {
+                        foreach(IntPtr handle in sdTabHandles.Keys) {
+                            commClient.Channel.PushInstance(handle);
+                        }
+                    }
+                }
+                catch(EndpointNotFoundException) {
+                }
+                lock(thread) {
+                    Monitor.Pulse(thread);
+                }
+                // Yes, we can just let the thread die here.
+            });
+            thread.Start();
+            lock(thread) {
+                Monitor.Wait(thread);
+            }            
+        }
+
+        private static ICommService GetChannel() {
+            if(commClient.State != CommunicationState.Opened) {
+                Initialize(true);
+            }
+            return commClient.State == CommunicationState.Opened ? commClient.Channel : null;
+        }
+
+        public static void StaticBroadcast(Action action) {
+            ICommService service = GetChannel();
+            if(service != null) service.Broadcast(DelToByte(action));
+        }
+
+        public static void TabBarBroadcast(Action<QTTabBarClass> action, bool includeCurrent) {
+            LocalTabBroadcast(action, includeCurrent ? null : Thread.CurrentThread);
+            StaticBroadcast(() => LocalTabBroadcast(action));
+        }
+
+        public static void LocalTabBroadcast(Action<QTTabBarClass> action, Thread skip = null) {
+            using(new Keychain(rwLockTabBar, false)) {
+                foreach(var pair in dictTabInstances) {
+                    if(pair.Key != skip) {
+                        pair.Value.Invoke(action, pair.Value);   
+                    }
+                }
+            }
+        }
+
+        public static void ButtonBarBroadcast(Action<QTButtonBar> action, bool includeCurrent) {
+            LocalBBarBroadcast(action, includeCurrent ? null : Thread.CurrentThread);
+            StaticBroadcast(() => LocalBBarBroadcast(action));
+        }
+
+        public static void LocalBBarBroadcast(Action<QTButtonBar> action, Thread skip = null) {
+            using(new Keychain(rwLockBtnBar, false)) {
+                foreach(var pair in dictBBarInstances) {
+                    if(pair.Key != skip) {
+                        pair.Value.Invoke(action, pair.Value);
+                    }
+                }
+            }
+        }
+
+        private static void ExecuteOnMainProcess(Action action, bool async) {
+            ICommService service = GetChannel();
+            if(service == null || service.ExecuteOnMainProcess(DelToByte(action), async)) {
+                action();
+            }
+        }
+
+        public static bool EnsureMainProcess(Action action) {
+            ICommService service = GetChannel();
+            if(service != null && service.IsMainProcess()) return true;
+            ExecuteOnMainProcess(action, false);
             return false;
         }
 
-        public static IntPtr CurrentHandle {
-            get {
-                IntPtr zero;
+        public static void InvokeMain(Action<QTTabBarClass> action) {
+            ExecuteOnMainProcess(() => LocalInvokeMain(action), false);
+        }
+
+        public static void BeginInvokeMain(Action<QTTabBarClass> action) {
+            ExecuteOnMainProcess(() => LocalInvokeMain(action), true);
+        }
+
+        public static void LocalInvokeMain(Action<QTTabBarClass> action) {
+            QTTabBarClass instance;
+            using(new Keychain(rwLockTabBar, false)) {
+                instance = sdTabHandles.Count == 0 ? null : sdTabHandles.Peek();
+            }
+            if(instance != null) instance.Invoke(action, instance);
+        }
+
+        public static void RegisterButtonBar(QTButtonBar bbar) {
+            using(new Keychain(rwLockBtnBar, true)) {
+                dictBBarInstances[Thread.CurrentThread] = bbar;
+            }
+        }
+
+        public static void PushTabBarInstance(QTTabBarClass tabbar) {
+            IntPtr handle = tabbar.Handle;
+            using(new Keychain(rwLockTabBar, true)) {
+                dictTabInstances[Thread.CurrentThread] = tabbar;
+                sdTabHandles.Push(handle, tabbar);
+            }
+            ICommService service = GetChannel();
+            if(service != null) service.PushInstance(handle);
+        }
+
+        public static void UnregisterButtonBar() {
+            using(new Keychain(rwLockBtnBar, true)) {
+                dictBBarInstances.Remove(Thread.CurrentThread);
+            }
+        }
+
+        public static bool UnregisterTabBar() {
+            using(new Keychain(rwLockTabBar, true)) {
+                QTTabBarClass tabbar;
+                if(dictTabInstances.TryGetValue(Thread.CurrentThread, out tabbar)) {
+                    IntPtr handle = tabbar.Handle;
+                    dictTabInstances.Remove(Thread.CurrentThread);
+                    sdTabHandles.Remove(handle);
+                    ICommService service = GetChannel();
+                    if(service != null) service.DeleteInstance(handle);
+                }
+                return false;
+            }
+        }
+
+        public static int GetTotalInstanceCount() {
+            ICommService service = GetChannel();
+            return service == null ? dictTabInstances.Count : service.GetTotalInstanceCount();
+        }
+
+        public static QTTabBarClass GetThreadTabBar() {
+            using(new Keychain(rwLockTabBar, false)) {
+                QTTabBarClass tab;
+                return dictTabInstances.TryGetValue(Thread.CurrentThread, out tab) ? tab : null;
+            }
+        }
+
+        public static QTButtonBar GetThreadButtonBar() {
+            using(new Keychain(rwLockBtnBar, false)) {
+                QTButtonBar bbar;
+                return dictBBarInstances.TryGetValue(Thread.CurrentThread, out bbar) ? bbar : null;
+            }
+        }
+
+        public static bool TryGetButtonBarHandle(IntPtr explorerHandle, out IntPtr ptr) {
+            // todo
+            QTButtonBar bbar;
+            if(dictBBarInstances.TryGetValue(Thread.CurrentThread, out bbar)) {
+                ptr = bbar.Handle;
+                return true;
+            }
+            ptr = IntPtr.Zero;
+            return false;
+        }
+
+        public static void ExecuteOnServerProcess(Action action, bool async) {
+            ICommService service;
+            if(isServer || (service = GetChannel()) == null) {
                 try {
-                    rwLockTabBar.AcquireReaderLock(-1);
-                    if(sdInstancePair.Count > 0) {
-                        InstancePair pair = sdInstancePair.Peek();
-                        if((pair.tabBar != null) && pair.tabBar.IsHandleCreated) {
-                            return pair.hwnd;
-                        }
-                    }
-                    zero = IntPtr.Zero;
+                    action();
                 }
-                finally {
-                    rwLockTabBar.ReleaseReaderLock();
+                catch(Exception ex) {
+                    QTUtility2.MakeErrorLog(ex);
                 }
-                return zero;
+            }
+            else {
+                service.ExecuteOnServerProcess(DelToByte(action), async);                
             }
         }
 
-        public static QTTabBarClass CurrentTabBar {
-            get {
-                QTTabBarClass class2;
-                try {
-                    rwLockTabBar.AcquireReaderLock(-1);
-                    if(sdInstancePair.Count > 0) {
-                        return sdInstancePair.Peek().tabBar;
-                    }
-                    class2 = null;
-                }
-                finally {
-                    rwLockTabBar.ReleaseReaderLock();
-                }
-                return class2;
-            }
+        public static void AddToTrayIcon(IntPtr tabBarHandle, IntPtr explorerHandle, string currentPath, string[] tabNames, string[] tabPaths) {
+            ICommService service = GetChannel();
+            if(service != null) service.AddToTrayIcon(tabBarHandle, explorerHandle, currentPath, tabNames, tabPaths);
         }
 
-        public delegate void TabBarCommand(QTTabBarClass tabBar);
-
-        [StructLayout(LayoutKind.Sequential)]
-        private struct InstancePair {
-            public QTTabBarClass tabBar;
-            public IntPtr hwnd;
-            public InstancePair(QTTabBarClass tabBar, IntPtr hwnd) {
-                this.tabBar = tabBar;
-                this.hwnd = hwnd;
-            }
-        }
-    }
-
-    internal sealed class StackDictionary<S, T> {
-        private IDictionary<S, T> dictionary;
-        private IList<S> lstKeys;
-
-        public StackDictionary() {
-            lstKeys = new List<S>();
-            dictionary = new Dictionary<S, T>();
+        public static void RemoveFromTrayIcon(IntPtr tabBarHandle) {
+            ICommService service = GetChannel();
+            if(service != null) service.RemoveFromTrayIcon(tabBarHandle);
         }
 
-        public T Peek() {
-            S local;
-            return popPeekInternal(false, out local);
-        }
-
-        public T Peek(out S key) {
-            return popPeekInternal(false, out key);
-        }
-
-        public T Pop() {
-            S local;
-            return popPeekInternal(true, out local);
-        }
-
-        public T Pop(out S key) {
-            return popPeekInternal(true, out key);
-        }
-
-        private T popPeekInternal(bool fPop, out S lastKey) {
-            if(lstKeys.Count == 0) {
-                throw new InvalidOperationException("This StackDictionary is empty.");
-            }
-            lastKey = lstKeys[lstKeys.Count - 1];
-            T local = dictionary[lastKey];
-            if(fPop) {
-                lstKeys.RemoveAt(lstKeys.Count - 1);
-                dictionary.Remove(lastKey);
-            }
-            return local;
-        }
-
-        public void Push(S key, T value) {
-            lstKeys.Remove(key);
-            lstKeys.Add(key);
-            dictionary[key] = value;
-        }
-
-        public bool Remove(S key) {
-            lstKeys.Remove(key);
-            return dictionary.Remove(key);
-        }
-
-        public bool TryGetValue(S key, out T value) {
-            return dictionary.TryGetValue(key, out value);
-        }
-
-        public int Count {
-            get {
-                return lstKeys.Count;
-            }
-        }
-
-        public ICollection<S> Keys {
-            get {
-                return dictionary.Keys;
-            }
-        }
-
-        public ICollection<T> Values {
-            get {
-                return dictionary.Values;
-            }
+        public static void SelectTabOnOtherTabBar(IntPtr tabBarHandle, int index) {
+            ICommService service = GetChannel();
+            if(service != null) service.SelectTabOnOtherTabBar(tabBarHandle, index);
         }
     }
 }

@@ -39,20 +39,28 @@ namespace QTTabBarLib {
                 HotkeyEntries.Add(new HotkeyEntry(keys, i));
             }
 
-            foreach(string pluginID in QTUtility.dicPluginShortcutKeys.Keys) {
+            var PluginShortcuts = new Dictionary<string, int[]>();
+            foreach(var info in PluginManager.PluginInformations) {
                 Plugin p;
-                keys = QTUtility.dicPluginShortcutKeys[pluginID];
-                if(!pluginManager.TryGetPlugin(pluginID, out p)) continue;
-                PluginInformation pi = p.PluginInformation;
-                if(pi.ShortcutKeyActions == null) continue;
-                string group = pi.Name;
-                if(keys == null && keys.Length == pi.ShortcutKeyActions.Length) {
-                    Array.Resize(ref keys, pi.ShortcutKeyActions.Length);
-                    // Hmm, I don't like this...
-                    QTUtility.dicPluginShortcutKeys[pluginID] = keys;
+                if(!PluginManager.TryGetStaticPluginInstance(info.PluginID, out p) || !p.PluginInformation.Enabled) continue;
+                string[] actions = null;
+                try {
+                    if(!p.Instance.QueryShortcutKeys(out actions)) actions = null;
                 }
-                HotkeyEntries.AddRange(pi.ShortcutKeyActions.Select((act, i) => new HotkeyEntry(keys, i, act, group)));
+                catch {
+                }
+                if(actions == null) continue;
+                if(WorkingConfig.keys.PluginShortcuts.TryGetValue(info.PluginID, out keys)) {
+                    Array.Resize(ref keys, actions.Length);
+                    PluginShortcuts[info.PluginID] = keys;
+                }
+                else {
+                    PluginShortcuts[info.PluginID] = new int[actions.Length];
+                }
+                HotkeyEntries.AddRange(actions.Select((act, i) => new HotkeyEntry(keys, i, act, p.PluginInformation.Name)));
             }
+            WorkingConfig.keys.PluginShortcuts = PluginShortcuts;
+
             ICollectionView view = CollectionViewSource.GetDefaultView(HotkeyEntries);
             PropertyGroupDescription groupDescription = new PropertyGroupDescription("PluginName");
             view.GroupDescriptions.Add(groupDescription);

@@ -86,17 +86,14 @@
       <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.ServiceModel.Web" />
-    <Reference Include="System.Xml.Linq">
-      <RequiredTargetFramework>3.5</RequiredTargetFramework>
-    </Reference>
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase">
       <RequiredTargetFramework>3.0</RequiredTargetFramework>
     </Reference>
-    <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppsManager.cs" />
@@ -149,6 +146,9 @@
       <DependentUpon>Options01_Window.xaml</DependentUpon>
     </Compile>
     <Compile Include="PluginManager.cs" />
+    <Compile Include="PluginServer.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="ShellContextMenu.cs" />
     <Compile Include="EditableHeader.xaml.cs">
       <DependentUpon>EditableHeader.xaml</DependentUpon>
@@ -187,6 +187,7 @@
     <Compile Include="Spinner.xaml.cs">
       <DependentUpon>Spinner.xaml</DependentUpon>
     </Compile>
+    <Compile Include="TrayIcon.cs" />
     <Compile Include="TreeViewWrapper.cs" />
     <Compile Include="Interop\INameSpaceTreeControl.cs" />
     <Compile Include="Interop\IOleWindow.cs" />

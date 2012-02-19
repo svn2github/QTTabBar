@@ -49,7 +49,10 @@ namespace QTTabBarLib {
         #region ---------- Static Methods ----------
 
         public static void Open() {
-            // TODO: Primary process only
+            InstanceManager.ExecuteOnServerProcess(OpenInternal, false);
+        }
+
+        private static void OpenInternal() {
             lock(typeof(OptionsDialog)) {
                 // Prevent reentrant calls that might happen during the Wait call below.
                 if(launchingThread == Thread.CurrentThread) return;
@@ -71,7 +74,9 @@ namespace QTTabBarLib {
                                 instance.WindowState = WindowState.Normal;
                             }
                             else {
+                                instance.Topmost = true;
                                 instance.Activate();
+                                instance.Topmost = false;
                             }
                         }));
                     }
@@ -111,6 +116,8 @@ namespace QTTabBarLib {
         #endregion
 
         private OptionsDialog() {
+            Initialized += (sender, args) => Topmost = true;
+            ContentRendered += (sender, args) => Topmost = false;
             InitializeComponent();
 
             int i = 0;
@@ -142,35 +149,19 @@ namespace QTTabBarLib {
             WorkingConfig = QTUtility2.DeepClone(ConfigManager.LoadedConfig);
             foreach(OptionsDialogTab tab in tabbedPanel.Items) {
                 tab.WorkingConfig = WorkingConfig;
-                if(tab is IHotkeyContainer) {
-                    ((IHotkeyContainer)tab).NewHotkeyRequested += ProcessNewHotkey;
-                }
+                IHotkeyContainer ihc = tab as IHotkeyContainer;
+                if(ihc != null) ihc.NewHotkeyRequested += ProcessNewHotkey;
                 tab.InitializeConfig();
             }
         }
 
         private void UpdateOptions() {
-            // A small caveat in my brilliant plan to separate the options tabs into separate files:
-            // The plugin tab has to be committed first, before the others.
-            OptionsDialogTab pluginTab = tabbedPanel.Items.OfType<Options12_Plugins>().First();
-            pluginTab.CommitConfig();
-
             foreach(OptionsDialogTab tab in tabbedPanel.Items) {
-                if(tab != pluginTab) tab.CommitConfig();
+                tab.CommitConfig();
             }
-
-            // todo: redo this crap...
-            bool fButtonBarNeedsRefresh = Config.BBar.LargeButtons != WorkingConfig.bbar.LargeButtons;
             ConfigManager.LoadedConfig = QTUtility2.DeepClone(WorkingConfig);
             ConfigManager.WriteConfig();
-            QTTabBarClass tabBar = InstanceManager.CurrentTabBar;
-            if(tabBar != null) {
-                tabBar.Invoke(new Action(tabBar.RefreshOptions));
-            }
-            QTButtonBar.BroadcastConfigChanged(fButtonBarNeedsRefresh);
-
-            // TODO: this should probably be moved to where ever the Langauge is set.
-            Resx.UpdateAll();
+            ConfigManager.UpdateConfig();
         }
 
         private void CategoryListBoxItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e) {
@@ -459,15 +450,6 @@ namespace QTTabBarLib {
         public Config WorkingConfig {
             get { return (Config)GetValue(WorkingConfigProperty); }
             set { SetValue(WorkingConfigProperty, value); }
-        }
-
-        internal PluginManager pluginManager;
-        protected OptionsDialogTab() {
-            // TODO: Find a way to get rid of this.
-            QTTabBarClass tabBar = InstanceManager.CurrentTabBar;
-            if(tabBar != null) {
-                pluginManager = tabBar.GetPluginManager();
-            }
         }
 
         // This is the index of the resource string that will be displayed in the category list.

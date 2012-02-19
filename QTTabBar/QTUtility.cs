@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using System.Resources;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Windows.Forms;
 using System.Xml;
 using Microsoft.Win32;
@@ -50,7 +51,6 @@ namespace QTTabBarLib {
         internal const string IMAGEKEY_NOEXT = "noext";
         internal const string IMAGEKEY_NOIMAGE = "noimage";
         internal static ImageList ImageListGlobal;
-        internal static int InstancesCount;
         internal static readonly bool IsRTL = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
         internal static readonly bool IsWin7 = Environment.OSVersion.Version >= new Version(6, 1);
         internal static readonly bool IsXP = Environment.OSVersion.Version.Major <= 5;
@@ -74,7 +74,6 @@ namespace QTTabBarLib {
         internal static SolidBrush sbAlternate;
         internal static readonly char[] SEPARATOR_CHAR = new char[] { ';' };
         internal const string SEPARATOR_PATH_HASH_SESSION = "*?*?*";
-        internal static Dictionary<string, int[]> dicPluginShortcutKeys = new Dictionary<string, int[]>();
         internal static Font StartUpTabFont;
         internal static Dictionary<string, string[]> TextResourcesDic;
         internal static List<byte[]> TMPIDLList = new List<byte[]>();
@@ -93,6 +92,9 @@ namespace QTTabBarLib {
             try {
                 // Load the config
                 ConfigManager.Initialize();
+
+                // Initialize the instance manager
+                InstanceManager.Initialize();
 
                 // Create and enable the API hooks
                 HookLibManager.Initialize();
@@ -152,6 +154,14 @@ namespace QTTabBarLib {
             catch(Exception exception) {
                 // TODO: Any errors here would be very serious.  Alert the user as such.
                 QTUtility2.MakeErrorLog(exception);
+            }
+        }
+
+        public static object ByteArrayToObject(byte[] arrBytes) {
+            using(MemoryStream memStream = new MemoryStream()) {
+                memStream.Write(arrBytes, 0, arrBytes.Length);
+                memStream.Seek(0, SeekOrigin.Begin);
+                return new BinaryFormatter().Deserialize(memStream);                
             }
         }
 
@@ -431,6 +441,10 @@ namespace QTTabBarLib {
             return false;
         }
 
+        public static void Initialize() {
+            // This method exists just to cause the static constructor to fire, if it hasn't already.
+        }
+
         public static void LoadReservedImage(ImageReservationKey irk) {
             if(!ImageListGlobal.Images.ContainsKey(irk.ImageKey)) {
                 switch(irk.ImageType) {
@@ -487,6 +501,14 @@ namespace QTTabBarLib {
             return button;
         }
 
+        public static byte[] ObjectToByteArray(Object obj) {
+            if(obj == null) return null;
+            using(MemoryStream ms = new MemoryStream()) {
+                new BinaryFormatter().Serialize(ms, obj);
+                return ms.ToArray();
+            }
+        }
+
         public static Dictionary<string, string[]> ReadLanguageFile(string path) {
             Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
             const string newValue = "\r\n";
@@ -526,13 +548,6 @@ namespace QTTabBarLib {
                         LockedTabsToRestoreList.Clear();
                     }
                 }
-            }
-        }
-
-        public static void RegisterPrimaryInstance(IntPtr hwndExplr, QTTabBarClass tabBar) {
-            InstanceManager.PushInstance(hwndExplr, tabBar);
-            using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
-                QTUtility2.WriteRegHandle("Handle", key, tabBar.Handle);
             }
         }
 
@@ -678,6 +693,7 @@ namespace QTTabBarLib {
             ValidateTextResources(ref TextResourcesDic);
             ResMain = TextResourcesDic["TabBar_Menu"];
             ResMisc = TextResourcesDic["Misc_Strings"];
+            Resx.UpdateAll();
         }
 
         public static void ValidateTextResources(ref Dictionary<string, string[]> dict) {

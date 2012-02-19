@@ -215,6 +215,9 @@
   <data name="TaskBar_Titles" xml:space="preserve">
     <value>Groups;Undo closed;Applications;Recently opened files</value>
   </data>
+  <data name="TrayIcon" xml:space="preserve">
+    <value>1 window;{0} windows</value>
+  </data>
   <data name="UpdateCheck" xml:space="preserve">
     <value>A new version of QTTabBar has been released:;Press OK to go to the web site.;Your version of QTTabBar is up to date.;New development version found:</value>
   </data>

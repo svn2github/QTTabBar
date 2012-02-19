@@ -104,6 +104,8 @@ namespace QTTabBarLib {
                 }
             }
             // todo: sync
+            InstanceManager.ButtonBarBroadcast(bbar => bbar.RefreshButtons(), true);
+            // todo: desktop
         }
 
         public static void AddGroup(string key, IEnumerable<string> paths) {

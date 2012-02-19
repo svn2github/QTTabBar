@@ -39,7 +39,7 @@
 #define CREATE_HOOK(address, name) {                                                            \
     MH_STATUS ret = MH_CreateHook(address, &Detour##name, reinterpret_cast<void**>(&fp##name)); \
     if(ret == MH_OK) ret = MH_EnableHook(address);                                              \
-    fpHookResult(hook##name, ret);                                                              \
+    callbacks.fpHookResult(hook##name, ret);                                                    \
 }
 #define CREATE_COM_HOOK(punk, idx, name) \
     CREATE_HOOK((*(void***)((IUnknown*)(punk)))[idx], name)
@@ -99,18 +99,21 @@ unsigned int WM_LISTREFRESHED;
 unsigned int WM_ISITEMSVIEW;
 unsigned int WM_ACTIVATESEL;
 unsigned int WM_BREADCRUMBDPA;
-unsigned int WM_NEWWINDOW;
+unsigned int WM_CHECKPULSE;
 
-// Callback function
-typedef void (*HOOKLIB_CALLBACK)(int hookId, int retcode);
-HOOKLIB_CALLBACK fpHookResult = NULL;
+// Callback struct
+struct CallbackStruct {
+    void (*fpHookResult)(int hookId, int retcode);
+    bool (*fpNewWindow)(LPCITEMIDLIST pIDL);
+};
+CallbackStruct callbacks;
 
 // Other stuff
 HMODULE hModAutomation = NULL;
 FARPROC fpRealRREP = NULL;
 FARPROC fpRealCI = NULL;
 
-extern "C" __declspec(dllexport) int Initialize(HOOKLIB_CALLBACK cb);
+extern "C" __declspec(dllexport) int Initialize(CallbackStruct* cb);
 extern "C" __declspec(dllexport) int Dispose();
 extern "C" __declspec(dllexport) int InitShellBrowserHook(IShellBrowser* psb);
 
@@ -127,7 +130,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpReser
     return true;
 }
 
-int Initialize(HOOKLIB_CALLBACK cb) {
+int Initialize(CallbackStruct* cb) {
 
     volatile static long initialized;
     if(InterlockedIncrement(&initialized) != 1) {
@@ -140,8 +143,8 @@ int Initialize(HOOKLIB_CALLBACK cb) {
     MH_STATUS ret = MH_Initialize();
     if(ret != MH_OK && ret != MH_ERROR_ALREADY_INITIALIZED) return ret;
 
-    // Store the callback function
-    fpHookResult = cb;
+    // Store the callback struct
+    callbacks = *cb;
 
     // Register the messages.
     WM_REGISTERDRAGDROP = RegisterWindowMessageA("QTTabBar_RegisterDragDrop");
@@ -152,7 +155,7 @@ int Initialize(HOOKLIB_CALLBACK cb) {
     WM_ISITEMSVIEW      = RegisterWindowMessageA("QTTabBar_IsItemsView");
     WM_ACTIVATESEL      = RegisterWindowMessageA("QTTabBar_ActivateSelection");
     WM_BREADCRUMBDPA    = RegisterWindowMessageA("QTTabBar_BreadcrumbDPA");
-    WM_NEWWINDOW        = RegisterWindowMessageA("QTTabBar_NewWindow");
+    WM_CHECKPULSE       = RegisterWindowMessageA("QTTabBar_CheckPulse");
 
     // Create and enable the CoCreateInstance, RegisterDragDrop, and SHCreateShellFolderView hooks.
     CREATE_HOOK(&CoCreateInstance, CoCreateInstance);
@@ -392,25 +395,11 @@ HRESULT WINAPI DetourSetNavigationState(IShellNavigationBand* _this, unsigned lo
 // The purpose of this hook is to alert QTTabBar that a new window is opening, so that we can 
 // intercept it if the user has enabled the appropriate option.  The hooked function is different
 // on Vista and 7.
-bool DetourShowWindow(PCIDLIST_ABSOLUTE pidl) {
-    HWND hwnd = 0;
-    HKEY hKey;
-    if(RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\QTTabBar", 0L, KEY_READ, &hKey) == ERROR_SUCCESS) {
-        BYTE bBuf[8] = {0};
-        DWORD dwSize = 8;
-        if(RegQueryValueExA(hKey, "Handle", NULL, NULL, bBuf, &dwSize) == ERROR_SUCCESS) {
-            hwnd = *(HWND*)bBuf; // HWNDs are guaranteed to be safe to truncate.
-            if(!IsWindow(hwnd)) hwnd = 0;
-        }
-        RegCloseKey(hKey);
-    }
-    return hwnd != 0 && SendMessage(hwnd, WM_NEWWINDOW, NULL, (LPARAM)pidl) != 0;
-}
 HRESULT WINAPI DetourShowWindow_7(ICommonExplorerHost* _this, PCIDLIST_ABSOLUTE pidl, DWORD flags, POINT pt, DWORD mystery) {
-    return DetourShowWindow(pidl) ? S_OK : fpShowWindow_7(_this, pidl, flags, pt, mystery);
+    return callbacks.fpNewWindow(pidl) ? S_OK : fpShowWindow_7(_this, pidl, flags, pt, mystery);
 }
 HRESULT WINAPI DetourShowWindow_Vista(IExplorerFactory* _this, PCIDLIST_ABSOLUTE pidl, DWORD flags, DWORD mystery1, DWORD mystery2, POINT pt) {
-    return DetourShowWindow(pidl) ? S_OK : fpShowWindow_Vista(_this, pidl, flags, mystery1, mystery2, pt);
+    return callbacks.fpNewWindow(pidl) ? S_OK : fpShowWindow_Vista(_this, pidl, flags, mystery1, mystery2, pt);
 }
 
 // The SHOpenFolderAndSelectItems function opens an Explorer window and waits for a New Window
@@ -427,7 +416,7 @@ HRESULT WINAPI DetourUpdateWindowList(/* IShellBrowserService */ IUnknown* _this
             HWND parent = GetParent(hwnd);
             if(parent != 0) hwnd = parent;
             CComPtr<IDispatch> pdisp;
-            if(SendMessage(parent, WM_NEWWINDOW, NULL, (WPARAM)(&pdisp)) != 0 && pdisp != NULL) {
+            if(SendMessage(parent, WM_CHECKPULSE, NULL, (WPARAM)(&pdisp)) != 0 && pdisp != NULL) {
                 CComPtr<IShellWindows> psw;
                 if(psw.Create(CLSID_ShellWindows, CLSCTX_ALL)) {
                     long cookie;

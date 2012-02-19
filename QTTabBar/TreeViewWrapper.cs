@@ -24,7 +24,7 @@ using QTTabBarLib.Interop;
 namespace QTTabBarLib {
     class TreeViewWrapper : IDisposable {
         public delegate void TreeViewMiddleClickedHandler(IShellItem item);
-        public event QTTabBarClass.FolderClickedHandler TreeViewClicked;
+        public event FolderClickedHandler TreeViewClicked;
 
         private bool fDisposed;
         private INameSpaceTreeControl treeControl;

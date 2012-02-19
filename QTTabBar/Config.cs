@@ -440,6 +440,7 @@ namespace QTTabBarLib {
         [Serializable]
         public class _BBar {
             public int[] ButtonIndexes           { get; set; }
+            public string[] ActivePluginIDs      { get; set; }
             public bool LargeButtons             { get; set; }
             public bool LockSearchBarWidth       { get; set; }
             public bool LockDropDownButtons      { get; set; }
@@ -450,6 +451,7 @@ namespace QTTabBarLib {
                 ButtonIndexes = QTUtility.IsXP 
                         ? new int[] {1, 2, 0, 3, 4, 5, 0, 6, 7, 0, 11, 13, 12, 14, 15, 0, 9, 20} 
                         : new int[] {3, 4, 5, 0, 6, 7, 0, 11, 13, 12, 14, 15, 0, 9, 20};
+                ActivePluginIDs = new string[0];
                 LockDropDownButtons = false;
                 LargeButtons = true;
                 LockSearchBarWidth = false;
@@ -502,6 +504,7 @@ namespace QTTabBarLib {
         [Serializable]
         public class _Keys {
             public int[] Shortcuts               { get; set; }
+            public Dictionary<string, int[]> PluginShortcuts { get; set; } 
             public bool UseTabSwitcher           { get; set; }
 
             public _Keys() {
@@ -531,6 +534,7 @@ namespace QTTabBarLib {
                     {BindAction.NewFolder,          Key.N     | Key.Control | Key.Shift},
                 };
                 Shortcuts = new int[(int)BindAction.KEYBOARD_ACTION_COUNT];
+                PluginShortcuts = new Dictionary<string, int[]>();
                 foreach(var pair in dict) {
                     Shortcuts[(int)pair.Key] = (int)pair.Value | QTUtility.FLAG_KEYENABLED;
                 }
@@ -569,6 +573,37 @@ namespace QTTabBarLib {
         public static void Initialize() {
             LoadedConfig = new Config();
             ReadConfig();
+
+        }
+
+        public static void UpdateConfig(bool fBroadcast = true) {
+            QTUtility.TextResourcesDic = Config.Lang.UseLangFile && File.Exists(Config.Lang.LangFile)
+                    ? QTUtility.ReadLanguageFile(Config.Lang.LangFile)
+                    : null;
+            QTUtility.ValidateTextResources();
+            QTUtility.ClosedTabHistoryList.MaxCapacity = Config.Misc.TabHistoryCount;
+            QTUtility.ExecutedPathsList.MaxCapacity = Config.Misc.FileHistoryCount;
+            DropDownMenuBase.InitializeMenuRenderer();
+            ContextMenuStripEx.InitializeMenuRenderer();
+            if(Config.Tweaks.AlternateRowColors) {
+                Color color = Config.Tweaks.AltRowBackgroundColor;
+                if(QTUtility.sbAlternate == null) {
+                    QTUtility.sbAlternate = new SolidBrush(color);
+                }
+                else {
+                    QTUtility.sbAlternate.Color = color;
+                }
+            }
+            PluginManager.RefreshPlugins();
+            InstanceManager.LocalTabBroadcast(tabbar => tabbar.RefreshOptions());
+            InstanceManager.LocalBBarBroadcast(bbar => bbar.CreateItems());
+            if(fBroadcast) {
+                // SyncTaskBarMenu(); todo
+                InstanceManager.StaticBroadcast(() => {
+                    ReadConfig();
+                    UpdateConfig(false);
+                });
+            }
         }
 
         public static void ReadConfig() {
@@ -649,9 +684,15 @@ namespace QTTabBarLib {
                 // todo: check dimensions
                 if(!wrapper.Available) Config.BBar.ImageStripPath = "";
             }
+            List<int> blist = Config.BBar.ButtonIndexes.ToList();
+            blist.RemoveAll(i => (i.HiWord() - 1) >= Config.BBar.ActivePluginIDs.Length);
+            Config.BBar.ButtonIndexes = blist.ToArray();
             var keys = Config.Keys.Shortcuts;
             Array.Resize(ref keys, (int)BindAction.KEYBOARD_ACTION_COUNT);
             Config.Keys.Shortcuts = keys;
+            foreach(var pair in Config.Keys.PluginShortcuts.Where(p => p.Value == null).ToList()) {
+                Config.Keys.PluginShortcuts.Remove(pair.Key);
+            }
             if(QTUtility.IsXP) Config.Tweaks.AlwaysShowHeaders = false;
             if(!QTUtility.IsWin7) Config.Tweaks.RedirectLibraryFolders = false;
             if(!QTUtility.IsXP) Config.Tweaks.KillExtWhileRenaming = true;

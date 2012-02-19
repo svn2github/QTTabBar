@@ -193,7 +193,7 @@ namespace QTTabBarLib {
 
         public bool IsRelativelyEqual(IDLWrapper idl2, IShellFolder relativeTo) {
             const int SHCIDS_CANONICALONLY = 0x10000000;
-            return !Equals(idl2, null) && (Equals(this, idl2) ||
+            return !ReferenceEquals(idl2, null) && (ReferenceEquals(this, idl2) ||
                     0 == (0xFFFF & relativeTo.CompareIDs((IntPtr)SHCIDS_CANONICALONLY, PIDL, idl2.PIDL)));
         }
 

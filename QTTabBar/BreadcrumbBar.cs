@@ -32,7 +32,7 @@ namespace QTTabBarLib {
         private const int TBIF_COMMAND = 0x20;
 
         protected static readonly UInt32 WM_BREADCRUMBDPA = PInvoke.RegisterWindowMessage("QTTabBar_BreadcrumbDPA");
-        public event QTTabBarClass.FolderClickedHandler ItemClicked;
+        public event FolderClickedHandler ItemClicked;
         private NativeWindowController BreadcrumbController;
         private NativeWindowController ParentController;
         private IntPtr hdpa = IntPtr.Zero;

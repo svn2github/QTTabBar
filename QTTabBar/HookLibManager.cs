@@ -25,16 +25,31 @@ using QTTabBarLib.Interop;
 namespace QTTabBarLib {
     static class HookLibManager {
         private static bool fShellBrowserIsHooked;
-        private static readonly HookLibCallback fpHookResult = HookResult;
         private static IntPtr hHookLib;
         private static int[] hookStatus = Enumerable.Repeat(-1, Enum.GetNames(typeof(Hooks)).Length).ToArray();
         
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate void HookLibCallback(int hookId, int retcode);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate bool NewWindowCallback(IntPtr pIDL);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct CallbackStruct {
+            public HookLibCallback cbHookResult;
+            public NewWindowCallback cbNewWindow;
+            // todo: NewTreeView should probably also go here.
+            // Using PostThreadMessage has a small chance of causing a memory leak.
+        }
+
+        private static readonly CallbackStruct callbackStruct = new CallbackStruct() {
+            cbHookResult = HookResult,
+            cbNewWindow = NewWindow
+        };
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         private delegate int InitShellBrowserHookDelegate(IntPtr shellBrowser);
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate int InitHookLibDelegate(HookLibCallback fpHookResult);
+        private delegate int InitHookLibDelegate(CallbackStruct fpHookResult);
 
         public enum HookCheckPoint{
             Initial,
@@ -76,7 +91,7 @@ namespace QTTabBarLib {
                     InitHookLibDelegate initialize = (InitHookLibDelegate)
                             Marshal.GetDelegateForFunctionPointer(pFunc, typeof(InitHookLibDelegate));
                     try {
-                        retcode = initialize(fpHookResult);
+                        retcode = initialize(callbackStruct);
                     }
                     catch(Exception e) {
                         QTUtility2.MakeErrorLog(e, "");
@@ -97,9 +112,32 @@ namespace QTTabBarLib {
         }
 
         private static void HookResult(int hookId, int retcode) {
-            lock(fpHookResult) {
+            lock(callbackStruct.cbHookResult) {
                 hookStatus[hookId] = retcode;
             }
+        }
+
+        // We need to use a callback rather than a message for window capturing,
+        // since the main instance could be in another process.
+        private static bool NewWindow(IntPtr pIDL) {
+            byte[] IDL;
+            using(IDLWrapper wrapper = new IDLWrapper(PInvoke.ILClone(pIDL))) {
+                if(!Config.Window.CaptureNewWindows
+                        || InstanceManager.GetTotalInstanceCount() == 0
+                        || QTUtility2.IsShellPathButNotFileSystem(wrapper.Path)
+                        || wrapper.Path.PathEquals(QTUtility.PATH_SEARCHFOLDER)
+                        || QTUtility.NoCapturePathsList.Any(path => wrapper.Path.PathEquals(path))
+                        || (Control.ModifierKeys & Keys.Control) != Keys.None) {
+                    return false;
+                }
+                IDL = wrapper.IDL;
+            }
+            InstanceManager.InvokeMain(tabbar => {
+                using(IDLWrapper wrapper = new IDLWrapper(IDL)) {
+                    tabbar.OpenNewTabOrWindow(wrapper, true);
+                }
+            });
+            return true;
         }
 
         public static void InitShellBrowserHook(IShellBrowser shellBrowser) {

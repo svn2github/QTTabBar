@@ -1214,22 +1214,34 @@ namespace QTTabBarLib {
                 SetTabImages(null);
             }
             tabTextAlignment = Config.Skin.TabTextCentered ? StringAlignment.Center : StringAlignment.Near;
-            fAutoSubText = Config.Tabs.RenameAmbTabs;
             fDrawShadow = Config.Skin.TabTitleShadows;
             fDrawCloseButton = Config.Tabs.ShowCloseButtons && !Config.Tabs.CloseBtnsWithAlt;
             fCloseBtnOnHover = Config.Tabs.CloseBtnsOnHover;
             fShowSubDirTip = Config.Tabs.ShowSubDirTipOnTab;
-            if(!fInit && (fDrawFolderImg != Config.Tabs.ShowFolderIcon)) {
-                fDrawFolderImg = Config.Tabs.ShowFolderIcon;
-                if(fDrawFolderImg) {
-                    foreach(QTabItemBase base2 in TabPages) {
-                        base2.ImageKey = base2.ImageKey;
+            if(!fInit) {
+                if(fDrawFolderImg != Config.Tabs.ShowFolderIcon) {
+                    fDrawFolderImg = Config.Tabs.ShowFolderIcon;
+                    if(fDrawFolderImg) {
+                        foreach(QTabItemBase base2 in TabPages) {
+                            base2.ImageKey = base2.ImageKey;
+                        }
+                    }
+                    else {
+                        fNowMouseIsOnIcon = false;
                     }
                 }
-                else {
-                    fNowMouseIsOnIcon = false;
+                if(fAutoSubText && !Config.Tabs.RenameAmbTabs) {
+                    foreach(QTabItem item in TabPages) {
+                        item.Comment = string.Empty;
+                        item.RefreshRectangle();
+                    }
+                    Refresh();
                 }
+                else if(!fAutoSubText && Config.Tabs.RenameAmbTabs) {
+                    QTabItem.CheckSubTexts(this);
+                }   
             }
+            fAutoSubText = Config.Tabs.RenameAmbTabs;
         }
 
         public bool SelectFocusedTab() {

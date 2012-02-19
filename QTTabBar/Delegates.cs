@@ -26,4 +26,5 @@ namespace QTTabBarLib {
     internal delegate void QEventHandler(object sender, QEventArgs e);
     internal delegate void QTabCancelEventHandler(object sender, QTabCancelEventArgs e);
     internal delegate void WaitTimeoutCallback(int msec);
+    internal delegate bool FolderClickedHandler(IDLWrapper item, Keys modkeys, bool middle);
 }

@@ -257,12 +257,15 @@ namespace QTTabBarLib {
         }
 
         private void dataGridView1_CellMouseDoubleClick(object sender, DataGridViewCellMouseEventArgs e) {
-            if((e.RowIndex >= 0) && (e.ColumnIndex > 0)) {
-                string toolTipText = dgvHash.Rows[e.RowIndex].Cells[1].ToolTipText;
-                IntPtr currentHandle = InstanceManager.CurrentHandle;
-                if(PInvoke.IsWindow(currentHandle)) {
-                    QTUtility2.SendCOPYDATASTRUCT(currentHandle, (IntPtr)0xffb, Path.GetDirectoryName(toolTipText), IntPtr.Zero);
-                }
+            if(e.RowIndex >= 0 && e.ColumnIndex > 0) {
+                string path = dgvHash.Rows[e.RowIndex].Cells[1].ToolTipText;
+                InstanceManager.InvokeMain(tabBar => {
+                    using(IDLWrapper idlw = new IDLWrapper(Path.GetDirectoryName(path))) {
+                        if(idlw.Available) {
+                            tabBar.OpenNewTabOrWindow(idlw);
+                        }
+                    }
+                });
             }
         }
 

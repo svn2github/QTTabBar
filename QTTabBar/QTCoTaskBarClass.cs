@@ -720,11 +720,12 @@ namespace QTTabBarLib {
         private bool GetTargetWindow(IDLWrapper idlw, bool fNeedWait, out IntPtr hwndTabBar, out bool fOpened) {
             hwndTabBar = IntPtr.Zero;
             fOpened = false;
+#if false
             using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root)) {
                 if(key != null) {
                     hwndTabBar = QTUtility2.ReadRegHandle("Handle", key);
                 }
-                if((hwndTabBar == IntPtr.Zero) || !PInvoke.IsWindow(hwndTabBar)) {                              // what?! --.
+                if((hwndTabBar == IntPtr.Zero) || !PInvoke.IsWindow(hwndTabBar)) {                    // what?! --.
                     hwndTabBar = InstanceManager.CurrentHandle;                                       //          v
                     if((idlw.Available && ((hwndTabBar == IntPtr.Zero) || !PInvoke.IsWindow(hwndTabBar))) && ShellBrowser.Navigate(idlw)  == 0) {
                         fOpened = true;
@@ -748,6 +749,7 @@ namespace QTTabBarLib {
             if(hwndTabBar != IntPtr.Zero) {
                 return PInvoke.IsWindow(hwndTabBar);
             }
+#endif
             return false;
         }
 
