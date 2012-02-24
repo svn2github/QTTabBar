@@ -1134,7 +1134,8 @@ namespace QTTabBarLib {
 
         private bool ListView_DoubleClick(Point pt) {
             if((ConfigValues[1] & 4) == 0 && listView.PointIsBackground(pt, false)) {
-                QTUtility2.SendCOPYDATASTRUCT(ThisHandle, (IntPtr)0xff, "fromdesktop", QTUtility2.Make_LPARAM(pt));
+                // todo
+                //QTUtility2.SendCOPYDATASTRUCT(ThisHandle, (IntPtr)0xff, "fromdesktop", QTUtility2.Make_LPARAM(pt));
             }
             return false;
         }
@@ -1447,7 +1448,8 @@ namespace QTTabBarLib {
                     IntPtr ptr;
                     bool flag;
                     if(GetTargetWindow(wrapper, true, out ptr, out flag) && !flag) {
-                        QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)9, null, (IntPtr)num);
+                        // todo
+                        //QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)9, null, (IntPtr)num);
                     }
                 }
             }

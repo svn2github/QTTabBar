@@ -16,7 +16,6 @@
 //    along with QTTabBar.  If not, see <http://www.gnu.org/licenses/>.
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -557,11 +556,8 @@ namespace QTTabBarLib {
             }
         }
 
-        private void ddmrGroupButton_ItemMiddleClicked(object sender, ItemRightClickedEventArgs e) {
-            IntPtr tabBarHandle = InstanceManager.GetThreadTabBar().Handle;
-            if(tabBarHandle != IntPtr.Zero) {
-                QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, (IntPtr)80, e.ClickedItem.Text, IntPtr.Zero);
-            }
+        private static void ddmrGroupButton_ItemMiddleClicked(object sender, ItemRightClickedEventArgs e) {
+            InstanceManager.GetThreadTabBar().ReplaceByGroup(e.ClickedItem.Text);
         }
 
         protected override void Dispose(bool disposing) {
@@ -586,58 +582,54 @@ namespace QTTabBarLib {
             return true;
         }
 
-        private void dropDownButtons_DropDown_Closed(object sender, ToolStripDropDownClosedEventArgs e) {
+        private static void dropDownButtons_DropDown_Closed(object sender, ToolStripDropDownClosedEventArgs e) {
             DropDownMenuBase.ExitMenuMode();
         }
 
         private void dropDownButtons_DropDown_ItemClicked(object sender, ToolStripItemClickedEventArgs e) {
             ToolStripItem ownerItem = ((ToolStripDropDown)sender).OwnerItem;
-            if((ownerItem != null) && (ownerItem.Tag != null)) {
-                QMenuItem clickedItem = e.ClickedItem as QMenuItem;
-                int tag = (int)ownerItem.Tag;
-                IntPtr tabBarHandle = InstanceManager.GetThreadTabBar().Handle;
-                IntPtr wParam = (IntPtr)(0xf00 | tag);
-                switch(tag) {
-                    case -1:
-                        if(clickedItem != null) {
-                            MenuItemArguments menuItemArguments = clickedItem.MenuItemArguments;
-                            wParam = menuItemArguments.IsBack ? ((IntPtr)0xff1) : ((IntPtr)0xff2);
-                            QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, wParam, menuItemArguments.Path, (IntPtr)menuItemArguments.Index);
+            QMenuItem clickedItem = e.ClickedItem as QMenuItem;
+            if(ownerItem == null || ownerItem.Tag == null || clickedItem == null) return;
+            int tag = (int)ownerItem.Tag;
+            QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
+            Keys modifierKeys = ModifierKeys;
+            switch(tag) {
+                case BII_NAVIGATION_DROPDOWN:
+                    MenuItemArguments mia = clickedItem.MenuItemArguments;
+                    if(modifierKeys == Keys.Control) {
+                        using(IDLWrapper wrapper = new IDLWrapper(mia.Path)) {
+                            tabbar.OpenNewWindow(wrapper);
                         }
-                        return;
+                    }
+                    else {
+                        if(modifierKeys == Keys.Shift) tabbar.CloneCurrentTab();  
+                        tabbar.NavigateToHistory(mia.Path, mia.IsBack, mia.Index);
+                    }
+                    return;
 
-                    case 0:
-                    case 1:
-                    case 2:
-                        return;
+                case BII_GROUP:
+                    ddmrGroupButton.Close();
+                    if(ModifierKeys == (Keys.Control | Keys.Shift)) {
+                        Group g = GroupsManager.GetGroup(e.ClickedItem.Text);
+                        g.Startup = !g.Startup;
+                        GroupsManager.SaveGroups();
+                    }
+                    else {
+                        tabbar.OpenGroup(e.ClickedItem.Text, modifierKeys == Keys.Control);
+                    }
+                    return;
 
-                    case 3:
-                        if(clickedItem != null) {
-                            ddmrGroupButton.Close();
-                            if(ModifierKeys != (Keys.Control | Keys.Shift)) {
-                                QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, wParam, e.ClickedItem.Text, IntPtr.Zero);
-                            }
-                            else {
-                                Group g = GroupsManager.GetGroup(e.ClickedItem.Text);
-                                g.Startup = !g.Startup;
-                                GroupsManager.SaveGroups();
-                            }
-                        }
-                        return;
+                case BII_RECENTTAB:
+                    using(IDLWrapper wrapper = new IDLWrapper(clickedItem.Path)) {
+                        tabbar.OpenNewTabOrWindow(wrapper);
+                    }
+                    return;
 
-                    case 4:
-                        if(clickedItem != null) {
-                            IntPtr dwData = (ModifierKeys != Keys.Control) ? IntPtr.Zero : ((IntPtr)1);
-                            QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, wParam, clickedItem.Path, dwData);
-                        }
-                        return;
-
-                    case 5:
-                        if(clickedItem != null && clickedItem.Target == MenuTarget.File) {
-                            AppsManager.Execute(clickedItem.MenuItemArguments.App, clickedItem.MenuItemArguments.ShellBrowser);
-                        }
-                        return;
-                }
+                case BII_APPLICATIONLAUNCHER:
+                    if(clickedItem.Target == MenuTarget.File) {
+                        AppsManager.Execute(clickedItem.MenuItemArguments.App, clickedItem.MenuItemArguments.ShellBrowser);
+                    }
+                    return;
             }
         }
 
@@ -682,12 +674,6 @@ namespace QTTabBarLib {
                     break;
             }
             button.DropDown.ResumeLayout();
-        }
-
-        private void EnableItemAt(int buttonIndex, bool fEnable) {
-            ToolStripItem item = toolStrip.Items.Cast<ToolStripItem>()
-                    .FirstOrDefault(item2 => item2.Tag != null && (int)item2.Tag == buttonIndex);
-            if(item != null) item.Enabled = fEnable;
         }
 
         public override void GetBandInfo(uint dwBandID, uint dwViewMode, ref DESKBANDINFO dbi) {
@@ -801,8 +787,9 @@ namespace QTTabBarLib {
             }
         }
 
-        private void navBranchRoot_DropDownItemClicked(object sender, ToolStripItemClickedEventArgs e) {
-            QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xff3, "Btn_Branch", (IntPtr)((QMenuItem)e.ClickedItem).MenuItemArguments.Index);
+        private static void navBranchRoot_DropDownItemClicked(object sender, ToolStripItemClickedEventArgs e) {
+            InstanceManager.GetThreadTabBar()
+                .NavigateBranchCurrent(((QMenuItem)e.ClickedItem).MenuItemArguments.Index);
         }
 
         protected override void OnExplorerAttached() {
@@ -860,7 +847,7 @@ namespace QTTabBarLib {
             ToolStripDropDownItem item = (ToolStripDropDownItem)sender;
             item.DropDown.SuspendLayout();
             Plugin plugin;
-            string pluginID = Config.BBar.ActivePluginIDs[((int)item.Tag).HiWord() - 1];;
+            string pluginID = Config.BBar.ActivePluginIDs[((int)item.Tag).HiWord() - 1];
             QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
             if(tabbar != null && tabbar.pluginServer.TryGetPlugin(pluginID, out plugin)) {
                 try {
@@ -927,11 +914,8 @@ namespace QTTabBarLib {
             }
         }
 
-        private void RefreshEnabledState() {
-            QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xfff, "fromBBRefresh", IntPtr.Zero);
-        }
-
-        private void RefreshSearchBox(bool fBrowserRefreshRequired) {
+        internal void RefreshSearchBox(bool fBrowserRefreshRequired) {
+            if(fRearranging) return;
             if(searchBox != null) {
                 searchBox.RefreshText();
             }
@@ -1041,7 +1025,10 @@ namespace QTTabBarLib {
 
         // TODO clean
         private bool ShellViewIncrementalSearch(string str) {
-            QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xffa, "svis", IntPtr.Zero);
+            var listView = InstanceManager.GetThreadTabBar().GetListView();
+            listView.HideSubDirTip(9);
+            listView.HideThumbnailTooltip(9);
+
             IShellView ppshv = null;
             IShellFolder shellFolder = null;
             IntPtr zero = IntPtr.Zero;
@@ -1215,23 +1202,8 @@ namespace QTTabBarLib {
         }
 
         private void toolStrip_ItemClicked(object sender, ToolStripItemClickedEventArgs e) {
-            if((e.ClickedItem != null) && (e.ClickedItem.Tag != null)) {
-                IntPtr tabBarHandle = InstanceManager.GetThreadTabBar().Handle;
-                if(tabBarHandle != IntPtr.Zero) {
-                    int tag = (int)e.ClickedItem.Tag;
-                    if((tag.HiWord() == 0) && (tag != 9)) {
-                        IntPtr ptr2;
-                        if((tag == 1) || (tag == 2)) {
-                            ptr2 = (IntPtr)(0xf00 | tag);
-                            QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, ptr2, string.Empty, IntPtr.Zero);
-                        }
-                        else if((-1 >= tag) || (tag >= 6)) {
-                            ptr2 = (IntPtr)(0xf00 | tag);
-                            QTUtility2.SendCOPYDATASTRUCT(tabBarHandle, ptr2, string.Empty, IntPtr.Zero);
-                        }
-                    }
-                }
-            }
+            if(e.ClickedItem == null || e.ClickedItem.Tag == null) return;
+            InstanceManager.GetThreadTabBar().ProcessButtonBarClick((int)e.ClickedItem.Tag);
         }
 
         private void toolStrip_MouseActivated(object sender, EventArgs e) {
@@ -1240,7 +1212,7 @@ namespace QTTabBarLib {
 
         private void toolStrip_MouseDoubleClick(object sender, MouseEventArgs e) {
             if(toolStrip.GetItemAt(e.Location) == null) {
-                QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xffd, string.Empty, IntPtr.Zero);
+                InstanceManager.GetThreadTabBar().OnMouseDoubleClick();
             }
         }
 
@@ -1398,8 +1370,9 @@ namespace QTTabBarLib {
                         for(int i = 0; i < toolStrip.Items.Count; i++) {
                             item = toolStrip.Items[i];
                             if((item.Enabled && item.Visible) && !(item is ToolStripSeparator)) {
-                                if(item is ToolStripControlHost) {
-                                    ((ToolStripControlHost)item).Control.Select();
+                                var tsch = item as ToolStripControlHost;
+                                if(tsch != null) {
+                                    tsch.Control.Select();
                                     return;
                                 }
                                 item.Select();
@@ -1414,8 +1387,9 @@ namespace QTTabBarLib {
                         for(int j = toolStrip.Items.Count - 1; j > -1; j--) {
                             item = toolStrip.Items[j];
                             if((item.Enabled && item.Visible) && !(item is ToolStripSeparator)) {
-                                if(item is ToolStripControlHost) {
-                                    ((ToolStripControlHost)item).Control.Select();
+                                ToolStripControlHost tsch = item as ToolStripControlHost;
+                                if(tsch != null) {
+                                    tsch.Control.Select();
                                     return;
                                 }
                                 item.Select();
@@ -1474,9 +1448,9 @@ namespace QTTabBarLib {
 
         private void userAppsSubDir_DoubleClicked(object sender, EventArgs e) {
             ddmrUserAppButton.Close();
-            string path = ((QMenuItem)sender).Path;
-            IntPtr dwData = (ModifierKeys != Keys.Control) ? IntPtr.Zero : ((IntPtr)1);
-            QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xf04, path, dwData);
+            using(IDLWrapper wrapper = new IDLWrapper(((QMenuItem)sender).Path)) {
+                InstanceManager.GetThreadTabBar().OpenNewTabOrWindow(wrapper);
+            }
         }
 
         internal void FocusSearchBox() {
@@ -1486,24 +1460,100 @@ namespace QTTabBarLib {
         }
 
         internal void RefreshButtons() {
-            EnableItemAt(BII_GROUP, GroupsManager.GroupCount > 0);
-            EnableItemAt(BII_APPLICATIONLAUNCHER, AppsManager.UserApps.Any());
-            EnableItemAt(BII_RECENTTAB, QTUtility.ClosedTabHistoryList.Count > 0);
-
-            // todo: recent files
-            RefreshEnabledState(); // todo: kill this
-            // todo: kill this, and make CreateItems set this value correctly too.
-            foreach(ToolStripItem item2 in toolStrip.Items) {
-                if((item2.Tag != null) && (((int)item2.Tag) == 10)) {
-                    ((ToolStripButton)item2).Checked = PInvoke.Ptr_OP_AND(PInvoke.GetWindowLongPtr(ExplorerHandle, -20), 8) == new IntPtr(8);
-                    break;
+            if(NavDropDown != null && NavDropDown.Visible) {
+                NavDropDown.Close(ToolStripDropDownCloseReason.AppClicked);
+            }
+            if(ddmrGroupButton != null && ddmrGroupButton.Visible) {
+                ddmrGroupButton.Close(ToolStripDropDownCloseReason.AppClicked);
+            }
+            if(ddmrRecentlyClosed != null && ddmrRecentlyClosed.Visible) {
+                ddmrRecentlyClosed.Close(ToolStripDropDownCloseReason.AppClicked);
+            }
+            if(ddmrUserAppButton != null && ddmrUserAppButton.Visible) {
+                ddmrUserAppButton.Close(ToolStripDropDownCloseReason.AppClicked);
+            }
+            QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
+            int index = tabbar.SelectedTabIndex;
+            int count = tabbar.TabCount;
+            foreach(ToolStripItem item in toolStrip.Items) {
+                if(item.Tag == null) continue;
+                switch((int)item.Tag) {
+                    case BII_NAVIGATION_BACK:
+                        item.Enabled = tabbar.CanNavigateBackward;
+                        break;
+                    case BII_NAVIGATION_FWRD:
+                        item.Enabled = tabbar.CanNavigateForward;
+                        break;
+                    case BII_NAVIGATION_DROPDOWN:
+                        item.Enabled = tabbar.CanNavigateBackward || tabbar.CanNavigateForward;
+                        break;
+                    case BII_CLOSE_LEFT:
+                        item.Enabled = index > 0;
+                        break;
+                    case BII_CLOSE_RIGHT:
+                        item.Enabled = index < count - 1;
+                        break;
+                    case BII_CLOSE_ALLBUTCURRENT:
+                    case BII_CLOSE_CURRENT:
+                        item.Enabled = count > 1;
+                        break;
+                    case BII_GROUP:
+                        item.Enabled = GroupsManager.GroupCount > 0;
+                        break;
+                    case BII_APPLICATIONLAUNCHER:
+                        item.Enabled = AppsManager.UserApps.Any();
+                        break;
+                    case BII_RECENTTAB:
+                        item.Enabled = QTUtility.ClosedTabHistoryList.Count > 0;
+                        break;
+                    // todo: recent files
+                    case BII_TOPMOST:
+                        // todo: simplify this, and make CreateItems set this value correctly too.
+                        ((ToolStripButton)item).Checked = PInvoke.Ptr_OP_AND(PInvoke.GetWindowLongPtr(ExplorerHandle, -20), 8) == new IntPtr(8); // todo
+                        break;
                 }
             }
         }
 
+        internal void RefreshStatusText() {
+            if(iSearchResultCount <= 0) return;
+            int newCount = ShellBrowser.GetItemCount();
+            if(newCount >= iSearchResultCount) return;
+            iSearchResultCount = newCount;
+            ShellBrowser.SetStatusText(string.Concat(
+                    iSearchResultCount,
+                    " / ",
+                    iSearchResultCount + lstPUITEMIDCHILD.Count,
+                    QTUtility.TextResourcesDic["ButtonBar_Misc"][5]));
+        }
+
+        internal bool SetSearchBarText(string text) {
+            if(searchBox == null) return false;
+            searchBox.Focus();
+            searchBox.Text = text ?? "";
+            return true;
+        }
+
+        internal bool UpdatePluginItem(string pid, IBarButton instance, bool fEnabled, bool fRefreshImage) {
+            int p = Array.IndexOf(Config.BBar.ActivePluginIDs, pid);
+            if(p == -1) return false;
+            p = (p + 1) << 16;
+            ToolStripItem item = toolStrip.Items.Cast<ToolStripItem>().FirstOrDefault(tsi => (int)tsi.Tag == p);
+            if(item == null) return false;
+            item.Enabled = fEnabled;
+            try {
+                item.ToolTipText = instance.Text;
+                if(fRefreshImage) {
+                    item.Image = instance.GetImage(Config.BBar.LargeButtons);
+                }
+            }
+            catch(Exception exception) {
+                PluginManager.HandlePluginException(exception, ExplorerHandle, pid, "Refreshing plugin image and text.");
+            }
+            return true;
+        }
+
         protected override void WndProc(ref Message m) {
-            int num3 = 0;
-            int num4 = 0;
             switch(m.Msg) {
                 case WM.INITMENUPOPUP:
                 case WM.DRAWITEM:
@@ -1511,7 +1561,7 @@ namespace QTTabBarLib {
                     if(m.HWnd == Handle && shellContextMenu.TryHandleMenuMsg(m.Msg, m.WParam, m.LParam)) {
                         return;
                     }
-                    goto Label_08F8;
+                    break;
 
                 case WM.DROPFILES:
                     PInvoke.SendMessage(InstanceManager.GetThreadTabBar().Handle, 0x233, m.WParam, IntPtr.Zero);
@@ -1521,199 +1571,14 @@ namespace QTTabBarLib {
                     m.Result = toolStrip.IsHandleCreated ? toolStrip.Handle : IntPtr.Zero;
                     return;
 
-                case WM.COPYDATA: {
-                        COPYDATASTRUCT copydatastruct = (COPYDATASTRUCT)Marshal.PtrToStructure(m.LParam, typeof(COPYDATASTRUCT));
-                        switch(((int)m.WParam)) {
-                            case 2:
-                                num3 = ((int)copydatastruct.dwData) & 0xffff;
-                                num4 = (((int)copydatastruct.dwData) >> 0x10) & 0xffff;
-                                if((num4 & 1) == 1) {
-                                    EnableItemAt(1, (num3 & 1) == 1);
-                                }
-                                if((num4 & 2) == 2) {
-                                    EnableItemAt(2, (num3 & 2) == 2);
-                                }
-                                if(((num4 & 1) == 1) || ((num4 & 2) == 2)) {
-                                    EnableItemAt(-1, ((num3 & 1) == 1) || ((num3 & 2) == 2));
-                                }
-                                if((num4 & 4) == 4) {
-                                    EnableItemAt(14, (num3 & 4) == 4);
-                                }
-                                if((num4 & 8) == 8) {
-                                    EnableItemAt(15, (num3 & 8) == 8);
-                                }
-                                if((num4 & 0x10) == 0x10) {
-                                    EnableItemAt(12, (num3 & 0x10) == 0x10);
-                                }
-                                if((num4 & 0x20) == 0x20) {
-                                    EnableItemAt(11, (num3 & 0x20) == 0x20);
-                                }
-                                if((num4 & 0x40) == 0x40) {
-                                    foreach(ToolStripItem item in toolStrip.Items) {
-                                        if((item.Tag != null) && (((int)item.Tag) == 10)) {
-                                            ((ToolStripButton)item).Checked = (num3 & 0x40) == 0x40;
-                                            break;
-                                        }
-                                    }
-                                }
-                                break;
-
-                            case 3:
-                            case 6:
-                                return;
-
-                            case 4:
-                                if(ClickItem((int)copydatastruct.dwData)) {
-                                    m.Result = (IntPtr)1;
-                                }
-                                return;
-
-                            case 7:
-                                foreach(ToolStripItem item3 in toolStrip.Items) {
-                                    if((item3.Tag != null) && (((int)item3.Tag) == 0x13)) {
-                                        ((ToolStripTrackBar)item3).SetValueWithoutEvent((int)copydatastruct.dwData);
-                                        break;
-                                    }
-                                }
-                                return;
-
-                            case 8:
-                                if(searchBox != null) {
-                                    searchBox.TextBox.Focus();
-                                }
-                                return;
-
-                            case 9:
-                                // TODO
-                                if(!fRearranging) RefreshSearchBox(false);
-                                return;
-
-                            case 10:
-                                // TODO
-                                //RefreshTexts();
-                                return;
-
-                            case 11:
-                                /* TODO
-                                if(pluginManager != null) {
-                                    string pluginID = Marshal.PtrToStringAuto(copydatastruct.lpData);
-                                    for(int i = 0; i < PluginManager.ActivatedButtonsOrder.Count; i++) {
-                                        if(pluginID == PluginManager.ActivatedButtonsOrder[i].id) {
-                                            foreach(ToolStripItem item4 in toolStrip.Items) {
-                                                if(((int)item4.Tag) == (0x10000 + i)) {
-                                                    Plugin plugin;
-                                                    int dwData = (int)copydatastruct.dwData;
-                                                    bool flag = (dwData & 1) == 1;
-                                                    bool flag2 = (dwData & 2) == 2;
-                                                    item4.Enabled = flag;
-                                                    if(!pluginManager.TryGetPlugin(pluginID, out plugin)) {
-                                                        break;
-                                                    }
-                                                    IBarButton instance = plugin.Instance as IBarButton;
-                                                    if(instance == null) {
-                                                        break;
-                                                    }
-                                                    try {
-                                                        item4.ToolTipText = instance.Text;
-                                                        if(flag2) {
-                                                            item4.Image = instance.GetImage(Config.BBar.LargeButtons);
-                                                        }
-                                                        break;
-                                                    }
-                                                    catch(Exception exception) {
-                                                        PluginManager.HandlePluginException(exception, ExplorerHandle, plugin.PluginInformation.Name, "Refreshing plugin image and text.");
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }*/
-                                return;
-
-                            case 12:
-                                //todo
-                                //contextMenu_ItemClicked(null, new ToolStripItemClickedEventArgs(menuCustomize));
-                                return;
-
-                            case 13:
-                                if((iSearchResultCount > -1) && (iSearchResultCount != ((int)copydatastruct.dwData))) {
-                                    RefreshSearchBox(true);
-                                }
-                                return;
-
-                            case 14:
-                                if(iSearchResultCount > 0) {
-                                    int newCount = ShellBrowser.GetItemCount();
-                                    if(newCount < iSearchResultCount) {
-                                        iSearchResultCount = newCount;
-                                        ShellBrowser.SetStatusText(string.Concat(
-                                                iSearchResultCount, 
-                                                " / ", 
-                                                iSearchResultCount + lstPUITEMIDCHILD.Count,
-                                                QTUtility.TextResourcesDic["ButtonBar_Misc"][5]
-                                        ));
-                                    }
-                                }
-                                return;
-
-                            case 15:
-                                if(searchBox != null) {
-                                    searchBox.Width = SearchBoxWidth;
-                                    toolStrip.RaiseOnResize();
-                                }
-                                return;
-
-                            case 16: {
-                                    if(searchBox == null) {
-                                        m.Result = (IntPtr)1;
-                                        return;
-                                    }
-                                    string str2 = Marshal.PtrToStringUni(copydatastruct.lpData);
-                                    if(str2 == "null") {
-                                        str2 = string.Empty;
-                                    }
-                                    searchBox.Focus();
-                                    searchBox.Text = str2;
-                                    m.Result = IntPtr.Zero;
-                                    return;
-                                }
-                        }
-                        break;
-                    }
                 case WM.CONTEXTMENU:
-                    if(
-                            (ddmrGroupButton == null || !ddmrGroupButton.Visible) &&
+                    if(     (ddmrGroupButton == null || !ddmrGroupButton.Visible) &&
                             (ddmrUserAppButton == null || !ddmrUserAppButton.Visible) && 
                             (ddmrRecentlyClosed == null || !ddmrRecentlyClosed.Visible)) {
-                        QTUtility2.SendCOPYDATASTRUCT(InstanceManager.GetThreadTabBar().Handle, (IntPtr)0xffc, "btnCM", IntPtr.Zero);
+                        InstanceManager.GetThreadTabBar().ShowContextMenu(false);
                     }
                     return;
-
-                default:
-                    goto Label_08F8;
             }
-            if((num4 & 0x80) == 0x80) {
-                EnableItemAt(0x10, (num3 & 0x80) == 0);
-            }
-            if(num4 == 0x100) {
-                // todo: check this
-                CreateItems();
-            }
-            if((NavDropDown != null) && NavDropDown.Visible) {
-                NavDropDown.Close(ToolStripDropDownCloseReason.AppClicked);
-            }
-            if((ddmrGroupButton != null) && ddmrGroupButton.Visible) {
-                ddmrGroupButton.Close(ToolStripDropDownCloseReason.AppClicked);
-            }
-            if((ddmrRecentlyClosed != null) && ddmrRecentlyClosed.Visible) {
-                ddmrRecentlyClosed.Close(ToolStripDropDownCloseReason.AppClicked);
-            }
-            if((ddmrUserAppButton != null) && ddmrUserAppButton.Visible) {
-                ddmrUserAppButton.Close(ToolStripDropDownCloseReason.AppClicked);
-            }
-            return;
-        Label_08F8:
             base.WndProc(ref m);
         }
 

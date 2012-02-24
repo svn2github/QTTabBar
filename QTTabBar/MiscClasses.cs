@@ -368,22 +368,29 @@ namespace QTTabBarLib {
     // This class implements fire-and-forget functionality.
     internal static class AsyncHelper {
         private class TargetInfo {
-            public TargetInfo(Delegate d, object[] args) {
+            public TargetInfo(Delegate d, object[] args, int delay) {
                 Target = d;
                 Args = args;
+                Delay = delay;
             }
             public readonly Delegate Target;
             public readonly object[] Args;
+            public readonly int Delay;
+        }
+
+        public static void BeginInvoke(int delayMillis, Delegate d, params object[] args) {
+            ThreadPool.QueueUserWorkItem(DynamicInvokeCallback, new TargetInfo(d, args, delayMillis));
         }
 
         public static void BeginInvoke(Delegate d, params object[] args) {
-            ThreadPool.QueueUserWorkItem(DynamicInvokeCallback, new TargetInfo(d, args));
+            ThreadPool.QueueUserWorkItem(DynamicInvokeCallback, new TargetInfo(d, args, 0));
         }
 
         private static void DynamicInvokeCallback(object state) {
             TargetInfo ti = (TargetInfo)state;
             try {
-                ti.Target.DynamicInvoke(ti.Args);   
+                if(ti.Delay > 0) Thread.Sleep(ti.Delay);
+                ti.Target.DynamicInvoke(ti.Args);
             }
             catch(Exception ex) {
                 QTUtility2.MakeErrorLog(ex, "AsyncHelper");

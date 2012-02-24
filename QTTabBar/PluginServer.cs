@@ -196,7 +196,7 @@ namespace QTTabBarLib {
 
                         case Commands.ToggleTopMost:
                             tabBar.ToggleTopMost();
-                            tabBar.SyncButtonBarCurrent(0x40);
+                            TryCallButtonBar(bbar => bbar.RefreshButtons());
                             return true;
 
                         case Commands.FocusFileList:
@@ -208,10 +208,7 @@ namespace QTTabBarLib {
                             return true;
 
                         case Commands.OpenButtonBarOptionDialog:
-                            if(!InstanceManager.TryGetButtonBarHandle(tabBar.ExplorerHandle, out ptr)) {
-                                break;
-                            }
-                            QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)12, "showop", IntPtr.Zero);
+                            OptionsDialog.Open(); // todo: open at bbar page
                             return true;
 
                         case Commands.IsFolderTreeVisible:
@@ -267,10 +264,8 @@ namespace QTTabBarLib {
                             break;
 
                         case Commands.SetSearchBoxStr:
-                            if(((arg == null) || !(arg is string)) || !InstanceManager.TryGetButtonBarHandle(tabBar.ExplorerHandle, out ptr)) {
-                                break;
-                            }
-                            return (IntPtr.Zero == QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)0x10, (string)arg, IntPtr.Zero));
+                            return arg != null && arg is string &&
+                                    TryCallButtonBar(bbar => bbar.SetSearchBarText((string)arg));
 
                         case Commands.ReorderTabsByName:
                         case Commands.ReorderTabsByPath:
@@ -599,18 +594,9 @@ namespace QTTabBarLib {
             }
 
             public void UpdateItem(IBarButton barItem, bool fEnabled, bool fRefreshImage) {
-                IntPtr ptr;
-                string strMsg = InstanceToFullName(barItem, false);
-                if(strMsg.Length > 0 && InstanceManager.TryGetButtonBarHandle(tabBar.ExplorerHandle, out ptr)) {
-                    int num = 0;
-                    if(fEnabled) {
-                        num |= 1;
-                    }
-                    if(fRefreshImage) {
-                        num |= 2;
-                    }
-                    QTUtility2.SendCOPYDATASTRUCT(ptr, (IntPtr)11, strMsg, (IntPtr)num);
-                }
+                string pid = InstanceToFullName(barItem, false);
+                if(pid.Length > 0) TryCallButtonBar(bbar => 
+                    bbar.UpdatePluginItem(pid, barItem, fEnabled, fRefreshImage));
             }
 
             public void UnloadPluginInstance(string pluginID, EndCode code) {

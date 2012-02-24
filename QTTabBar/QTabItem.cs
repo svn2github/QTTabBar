@@ -49,6 +49,7 @@ namespace QTTabBarLib {
         }
 
         public static void CheckSubTexts(QTabControl tabControl) {
+            if(!tabControl.AutoSubText) return;
             bool needsRefresh = false;
             char[] separator = new char[] { Path.DirectorySeparatorChar };
             Dictionary<string, List<QTabItem>> commonTextTabs = new Dictionary<string, List<QTabItem>>();

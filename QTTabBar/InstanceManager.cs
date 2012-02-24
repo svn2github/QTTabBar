@@ -125,7 +125,7 @@ namespace QTTabBarLib {
                         using(new Keychain(rwLockTabBar, false)) {
                             QTTabBarClass tabbar;
                             if(sdTabHandles.TryGetValue(tabBarHandle, out tabbar)) {
-                                tabbar.SelectTab(index);
+                                tabbar.SelectedTabIndex = index;
                             }
                         }
                     })));
