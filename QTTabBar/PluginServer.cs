@@ -300,7 +300,7 @@ namespace QTTabBarLib {
             }
 
             public ITab HitTest(Point pnt) {
-                QTabItem tabMouseOn = (QTabItem)tabBar.tabControl1.GetTabMouseOn();
+                QTabItem tabMouseOn = tabBar.tabControl1.GetTabMouseOn();
                 return tabMouseOn != null ? new TabWrapper(tabMouseOn, tabBar) : null;
             }
 

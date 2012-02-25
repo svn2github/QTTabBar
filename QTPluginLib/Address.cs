@@ -20,6 +20,7 @@ using System.Runtime.InteropServices;
 using QTPlugin.Interop;
 
 namespace QTPlugin {
+    [Serializable]
     [StructLayout(LayoutKind.Sequential)]
     public struct Address {
         public byte[] ITEMIDLIST;

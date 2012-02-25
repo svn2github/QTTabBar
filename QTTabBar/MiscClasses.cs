@@ -180,9 +180,10 @@ namespace QTTabBarLib {
     [Serializable]
     public class SerializeDelegate : ISerializable {
         public Delegate Delegate { get; private set; }
-
-        public SerializeDelegate(Delegate del) {
+        private bool allowNSF;
+        public SerializeDelegate(Delegate del, bool allowNSF = false) {
             Delegate = del;
+            this.allowNSF = allowNSF;
         }
 
         public SerializeDelegate(SerializationInfo info, StreamingContext context) {
@@ -196,7 +197,7 @@ namespace QTTabBarLib {
             else {
                 MethodInfo method = (MethodInfo)info.GetValue("method", typeof(MethodInfo));
                 AnonymousClassWrapper w = (AnonymousClassWrapper)info.GetValue("class", typeof(AnonymousClassWrapper));
-                Delegate = System.Delegate.CreateDelegate(delType, w.obj, method);
+                Delegate = Delegate.CreateDelegate(delType, w.obj, method);
             }
         }
 
@@ -213,18 +214,20 @@ namespace QTTabBarLib {
             else {
                 info.AddValue("isSerializable", false);
                 info.AddValue("method", Delegate.Method);
-                info.AddValue("class", new AnonymousClassWrapper(Delegate.Method.DeclaringType, Delegate.Target));
+                info.AddValue("class", new AnonymousClassWrapper(Delegate.Method.DeclaringType, Delegate.Target, allowNSF));
             }
         }
 
         [Serializable]
         private class AnonymousClassWrapper : ISerializable {
+            private bool allowNSF;
             private Type type;
             public object obj;
-
-            internal AnonymousClassWrapper(Type bclass, object bobject) {
-                type = bclass;
-                obj = bobject;
+            
+            internal AnonymousClassWrapper(Type type, object obj, bool allowNSF) {
+                this.type = type;
+                this.obj = obj;
+                this.allowNSF = allowNSF;
             }
 
             internal AnonymousClassWrapper(SerializationInfo info, StreamingContext context) {
@@ -255,8 +258,8 @@ namespace QTTabBarLib {
                     if(typeof(Delegate).IsAssignableFrom(field.FieldType)) {
                         info.AddValue(field.Name, new SerializeDelegate((Delegate)field.GetValue(obj)));
                     }
-                    else if(!field.FieldType.IsSerializable) {
-                        info.AddValue(field.Name, new AnonymousClassWrapper(field.FieldType, field.GetValue(obj)));
+                    else if(allowNSF && !field.FieldType.IsSerializable) {
+                        info.AddValue(field.Name, new AnonymousClassWrapper(field.FieldType, field.GetValue(obj), true));
                     }
                     else {
                         info.AddValue(field.Name, field.GetValue(obj));

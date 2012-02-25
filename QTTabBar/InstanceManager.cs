@@ -264,14 +264,24 @@ namespace QTTabBarLib {
                             new Uri[] { new Uri(address) });
                     serviceHost.AddServiceEndpoint(
                             typeof(ICommService),
-                            new NetNamedPipeBinding(NetNamedPipeSecurityMode.None) { ReceiveTimeout = TimeSpan.MaxValue },
+                            new NetNamedPipeBinding(NetNamedPipeSecurityMode.None) {
+                                ReceiveTimeout = TimeSpan.MaxValue,
+                                ReaderQuotas = {MaxArrayLength = int.MaxValue},
+                                MaxBufferSize = int.MaxValue,
+                                MaxReceivedMessageSize = int.MaxValue,
+                            },
                             new Uri(address));
                     serviceHost.Open();
                 }
                 
 
                 commClient = new DuplexClient(new InstanceContext(new CommClient()),
-                        new NetNamedPipeBinding(NetNamedPipeSecurityMode.None),
+                        new NetNamedPipeBinding(NetNamedPipeSecurityMode.None) {
+                            ReceiveTimeout = TimeSpan.MaxValue,
+                            ReaderQuotas = { MaxArrayLength = int.MaxValue },
+                            MaxBufferSize = int.MaxValue,
+                            MaxReceivedMessageSize = int.MaxValue,
+                        },
                         new EndpointAddress(address));
                 try {
                     commClient.Open();
@@ -308,7 +318,11 @@ namespace QTTabBarLib {
         }
 
         public static void TabBarBroadcast(Action<QTTabBarClass> action, bool includeCurrent) {
-            LocalTabBroadcast(action, includeCurrent ? null : Thread.CurrentThread);
+            LocalTabBroadcast(action, Thread.CurrentThread);
+            if(includeCurrent) {
+                var tabbar = GetThreadTabBar();
+                if(tabbar != null) action(tabbar);
+            }
             StaticBroadcast(() => LocalTabBroadcast(action));
         }
 
@@ -316,14 +330,18 @@ namespace QTTabBarLib {
             using(new Keychain(rwLockTabBar, false)) {
                 foreach(var pair in dictTabInstances) {
                     if(pair.Key != skip) {
-                        pair.Value.Invoke(action, pair.Value);   
+                        pair.Value.BeginInvoke(action, pair.Value);   
                     }
                 }
             }
         }
 
         public static void ButtonBarBroadcast(Action<QTButtonBar> action, bool includeCurrent) {
-            LocalBBarBroadcast(action, includeCurrent ? null : Thread.CurrentThread);
+            LocalBBarBroadcast(action, Thread.CurrentThread);
+            if(includeCurrent) {
+                var bbar = GetThreadButtonBar();
+                if(bbar != null) action(bbar);
+            }
             StaticBroadcast(() => LocalBBarBroadcast(action));
         }
 
@@ -331,7 +349,7 @@ namespace QTTabBarLib {
             using(new Keychain(rwLockBtnBar, false)) {
                 foreach(var pair in dictBBarInstances) {
                     if(pair.Key != skip) {
-                        pair.Value.Invoke(action, pair.Value);
+                        pair.Value.BeginInvoke(action, pair.Value);
                     }
                 }
             }

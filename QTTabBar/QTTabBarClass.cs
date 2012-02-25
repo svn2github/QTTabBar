@@ -229,7 +229,7 @@ namespace QTTabBarLib {
                         tabControl1.TabPages.Relocate(0, tabControl1.TabCount - 1);
                         continue;
                     }
-                    if(tabControl1.TabPages.Cast<QTabItem>().Any(item => path.PathEquals(item.CurrentPath))) {
+                    if(tabControl1.TabPages.Any(item => path.PathEquals(item.CurrentPath))) {
                         continue;
                     }
                 }
@@ -238,7 +238,7 @@ namespace QTTabBarLib {
                     QTabItem tabPage = new QTabItem(QTUtility2.MakePathDisplayText(path, false), path, tabControl1);
                     tabPage.NavigatedTo(path, wrapper.IDL, -1, false);
                     tabPage.ToolTipText = QTUtility2.MakePathDisplayText(path, true);
-                    tabPage.UnderLine = true;
+                    tabPage.Underline = true;
                     tabControl1.TabPages.Add(tabPage);
                 }
             }
@@ -450,13 +450,13 @@ namespace QTTabBarLib {
                             if(msg.hwnd == WindowUtils.GetShellTabWindowClass(ExplorerHandle)) {
                                 try {
                                     bool flag = tabControl1.TabCount == 1;
-                                    string currentPath = ((QTabItem)tabControl1.SelectedTab).CurrentPath;
+                                    string currentPath = tabControl1.SelectedTab.CurrentPath;
                                     if(!Directory.Exists(currentPath) && currentPath.Length > 3 /* && currentPath.Substring(1, 2) == @":\" */ ) {
                                         if(flag) {
                                             WindowUtils.CloseExplorer(ExplorerHandle, 2);
                                         }
                                         else {
-                                            CloseTab((QTabItem)tabControl1.SelectedTab, true);
+                                            CloseTab(tabControl1.SelectedTab, true);
                                         }
                                     }
                                 }
@@ -627,7 +627,7 @@ namespace QTTabBarLib {
         }
 
         private void CancelFailedTabChanging(string newPath) {
-            if(!CloseTab((QTabItem)tabControl1.SelectedTab, true)) {
+            if(!CloseTab(tabControl1.SelectedTab, true)) {
                 if(tabControl1.TabCount == 1) {
                     WindowUtils.CloseExplorer(ExplorerHandle, 2);
                 }
@@ -800,10 +800,10 @@ namespace QTTabBarLib {
             return item;
         }
 
-        private List<string> CloseAllTabsExcept(QTabItemBase leaveThisOne, bool leaveLocked = true) {
-            List<QTabItemBase> tabs = tabControl1.TabPages.Where(item => 
+        private List<string> CloseAllTabsExcept(QTabItem leaveThisOne, bool leaveLocked = true) {
+            List<QTabItem> tabs = tabControl1.TabPages.Where(item => 
                 !(leaveLocked && item.TabLocked) && item != leaveThisOne).ToList();
-            List<string> paths = tabs.Select(tab => ((QTabItem)tab).CurrentPath).ToList();
+            List<string> paths = tabs.Select(tab => tab.CurrentPath).ToList();
             CloseTabs(tabs, !leaveLocked);
             return paths;
         }
@@ -978,7 +978,7 @@ namespace QTTabBarLib {
             CurrentTab = null;
             int tabCount = tabControl1.TabCount;
             if(tabCount == 0) return true;
-            QTabItemBase tabPage = null;
+            QTabItem tabPage = null;
             switch(Config.Tabs.NextAfterClosed) {
                 case TabPos.Right:
                     tabPage = tabControl1.TabPages[index == tabCount ? index - 1: index];
@@ -998,7 +998,7 @@ namespace QTTabBarLib {
 
                 case TabPos.LastActive:
                     if(lstActivatedTabs.Count > 0) {
-                        QTabItemBase lastTab = lstActivatedTabs[lstActivatedTabs.Count - 1];
+                        QTabItem lastTab = lstActivatedTabs[lstActivatedTabs.Count - 1];
                         lstActivatedTabs.RemoveAt(lstActivatedTabs.Count - 1);
                         tabPage = tabControl1.TabPages.Contains(lastTab)
                                 ? lastTab
@@ -1021,7 +1021,7 @@ namespace QTTabBarLib {
             return true;
         }
 
-        private void CloseTabs(IEnumerable<QTabItemBase> tabs, bool fCritical = false) {
+        private void CloseTabs(IEnumerable<QTabItem> tabs, bool fCritical = false) {
             tabControl1.SetRedraw(false);
             bool closeCurrent = false;
             foreach(QTabItem tab in tabs) {
@@ -1772,7 +1772,9 @@ namespace QTTabBarLib {
                     break;
 
                 case BindAction.MergeWindows:
+                    MergeAllWindows();
                     break;
+
                 case BindAction.ShowRecentFilesMenu:
                     break;
                 case BindAction.SortTabsByName:
@@ -1999,7 +2001,7 @@ namespace QTTabBarLib {
             HideToolTipForDD();
             hwnd = tabControl1.Handle;
             idlReal = null;
-            QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+            QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
             if((tabMouseOn == null) || !Config.Tabs.DragOverTabOpensSDT) {
                 return 1;
             }
@@ -2043,7 +2045,7 @@ namespace QTTabBarLib {
 
         private void dropTargetWrapper_DragFileOver(object sender, DragEventArgs e) {
             e.Effect = DragDropEffects.None;
-            QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+            QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
             bool flag = true;
             if(tabMouseOn != tabForDD) {
                 tabControl1.Refresh();
@@ -2161,7 +2163,7 @@ namespace QTTabBarLib {
                     CurrentAddress = path;
                     CurrentTab.Text = Explorer.LocationName;
                     CurrentTab.CurrentIDL = null;
-                    CurrentTab.TooltipText2 = null;
+                    CurrentTab.ShellToolTip = null;
                     byte[] idl;
                     using(IDLWrapper wrapper2 = GetCurrentPIDL()) {
                         CurrentTab.CurrentIDL = idl = wrapper2.IDL;
@@ -2431,7 +2433,7 @@ namespace QTTabBarLib {
                             num5 = (ushort) (num5 + 0x41);
                             string str = ((char) num5) + @":\";
                             CloseTabs(tabControl1.TabPages.Where(item =>
-                                    ((QTabItem)item).CurrentPath.PathStartsWith(str)).ToList(), true);
+                                    item.CurrentPath.PathStartsWith(str)).ToList(), true);
                             if(tabControl1.TabCount == 0) {
                                 WindowUtils.CloseExplorer(ExplorerHandle, 2);
                             }
@@ -3676,7 +3678,7 @@ namespace QTTabBarLib {
         private void menuitemUndoClose_DropDownItemClicked(object sender, ToolStripItemClickedEventArgs e) {
             QMenuItem clickedItem = (QMenuItem)e.ClickedItem;
             if(ModifierKeys != Keys.Control) {
-                OpenNewTab(clickedItem.Path, false);
+                OpenNewTab(clickedItem.Path);
             }
             else {
                 using(IDLWrapper wrapper = new IDLWrapper(clickedItem.Path)) {
@@ -3716,39 +3718,30 @@ namespace QTTabBarLib {
         }
 
         private void MergeAllWindows() {
-            List<IntPtr> list = new List<IntPtr>();
-            // TODO: this is going to be broken until QTabItem can be made serializable.
-
-            // IM!
-            /*
-            foreach(IntPtr ptr in InstanceManager.ExplorerHandles()) {
-                if(ptr != ExplorerHandle) {
-                    list.Add(ptr);
-                }
-            }
-            try {
-                tabControl1.SetRedraw(false);
-                foreach(IntPtr ptr2 in list) {
-                    QTTabBarClass tabBar = InstanceManager.GetThreadTabBar(ptr2);
-                    if(tabBar != null) {
-                        foreach(QTabItem item in tabBar.tabControl1.TabPages) {
-                            item.Clone(true).ResetOwner(tabControl1);
+            InstanceManager.PushTabBarInstance(this);
+            InstanceManager.TabBarBroadcast(tabbar => {
+                QTabItem[] tabs = tabbar.tabControl1.TabPages.Select(tab => tab.Clone(true)).ToArray();
+                InstanceManager.InvokeMain(main => {
+                    try {
+                        main.tabControl1.SetRedraw(false);
+                        foreach(QTabItem tab in tabs) {
+                            tab.ResetOwner(main.tabControl1);
                         }
-                        WindowUtils.CloseExplorer(ptr2, 2);
+                        QTabItem.CheckSubTexts(main.tabControl1);
+                        TryCallButtonBar(bbar => bbar.RefreshButtons());
                     }
-                }
-                QTabItem.CheckSubTexts(tabControl1);
-                SyncButtonBarCurrent(60);
-            }
-            finally {
-                tabControl1.SetRedraw(true);
-            }*/
+                    finally {
+                        main.tabControl1.SetRedraw(true);
+                    }
+                });
+                WindowUtils.CloseExplorer(tabbar.ExplorerHandle, 2, true);
+            }, false);
         }
 
         private void MinimizeToTray() {
             InstanceManager.AddToTrayIcon(Handle, ExplorerHandle, CurrentAddress,
                 tabControl1.TabPages.Select(t => t.Text).ToArray(),
-                tabControl1.TabPages.Select(t => ((QTabItem)t).CurrentPath).ToArray());
+                tabControl1.TabPages.Select(t => t.CurrentPath).ToArray());
         }
 
         private void NavigateBackToTheFuture() {
@@ -4280,7 +4273,7 @@ namespace QTTabBarLib {
                 try {
                     // Check if it's already open
                     if(!fForceNew && Config.Tabs.NeverOpenSame) {
-                        QTabItem tabPage = tabControl1.TabPages.Cast<QTabItem>().FirstOrDefault(
+                        QTabItem tabPage = tabControl1.TabPages.FirstOrDefault(
                                 item2 => item2.CurrentPath.PathEquals(idlw.Path));
                         if(tabPage != null) {
                             if(Config.Tabs.ActivateNewTab) {
@@ -4546,7 +4539,6 @@ namespace QTTabBarLib {
         }
 
         internal void RefreshOptions() {
-            TryCallButtonBar(bbar => bbar.RefreshButtons());
             SuspendLayout();
             tabControl1.SuspendLayout();
             tabControl1.RefreshOptions(false);
@@ -4578,6 +4570,7 @@ namespace QTTabBarLib {
             ShellBrowser.SetUsingListView(Config.Tweaks.ForceSysListView);
             tabControl1.ResumeLayout();
             ResumeLayout(true);
+            TryCallButtonBar(bbar => bbar.CreateItems());
         }
 
         [ComRegisterFunction]
@@ -4617,12 +4610,12 @@ namespace QTTabBarLib {
                                 strB = tabControl1.TabPages[k].Text;
                             }
                             else if(index == 1) {
-                                strA = ((QTabItem)tabControl1.TabPages[j]).CurrentPath;
-                                strB = ((QTabItem)tabControl1.TabPages[k]).CurrentPath;
+                                strA = tabControl1.TabPages[j].CurrentPath;
+                                strB = tabControl1.TabPages[k].CurrentPath;
                             }
                             else {
-                                int num6 = lstActivatedTabs.IndexOf((QTabItem)tabControl1.TabPages[j]);
-                                int num7 = lstActivatedTabs.IndexOf((QTabItem)tabControl1.TabPages[k]);
+                                int num6 = lstActivatedTabs.IndexOf(tabControl1.TabPages[j]);
+                                int num7 = lstActivatedTabs.IndexOf(tabControl1.TabPages[k]);
                                 if(((num6 - num7) * num3) < 0) {
                                     tabControl1.TabPages.Relocate(j, k);
                                 }
@@ -4664,13 +4657,13 @@ namespace QTTabBarLib {
             string path = null;
             while(stack.Count > 0) {
                 path = stack.Pop();
-                if(!tabControl1.TabPages.Cast<QTabItem>().Any(item => item.CurrentPath.PathEquals(path))) {
-                    OpenNewTab(path, false);
+                if(!tabControl1.TabPages.Any(item => item.CurrentPath.PathEquals(path))) {
+                    OpenNewTab(path);
                     return;
                 }
             }
             if(!path.PathEquals(CurrentAddress)) {
-                OpenNewTab(path, false);
+                OpenNewTab(path);
             }
         }
 
@@ -4715,7 +4708,7 @@ namespace QTTabBarLib {
                             string[] strArray = ((string)key.GetValue("TabsOnLastClosedWindow", string.Empty)).Split(QTUtility.SEPARATOR_CHAR);
                             if((strArray.Length > 0) && (strArray[0].Length > 0)) {
                                 foreach(string str2 in strArray.Where(str2 => str2.Length > 0
-                                        && !tabControl1.TabPages.Cast<QTabItem>().Any(item3 => item3.CurrentPath == str2))) {
+                                        && tabControl1.TabPages.All(item3 => item3.CurrentPath != str2))) {
                                     if(str2 == openingPath) {
                                         tabControl1.TabPages.Relocate(0, tabControl1.TabCount - 1);
                                     }
@@ -5126,9 +5119,8 @@ namespace QTTabBarLib {
                 e.Cancel = true;
             }
             else if(!Explorer.Busy) {
-                QTabItem tabPage = (QTabItem)e.TabPage;
                 if(tabControl1.TabCount > 1) {
-                    e.Cancel = !CloseTab(tabPage);
+                    e.Cancel = !CloseTab(e.TabPage);
                 }
                 else {
                     WindowUtils.CloseExplorer(ExplorerHandle, 1);
@@ -5138,7 +5130,7 @@ namespace QTTabBarLib {
 
         private void tabControl1_Deselecting(object sender, QTabCancelEventArgs e) {
             if(e.TabPageIndex != -1) {
-                SaveSelectedItems((QTabItem)e.TabPage);
+                SaveSelectedItems(e.TabPage);
             }
         }
 
@@ -5152,7 +5144,7 @@ namespace QTTabBarLib {
 
         private void tabControl1_MouseDoubleClick(object sender, MouseEventArgs e) {
             if((ModifierKeys != Keys.Control) && (e.Button == MouseButtons.Left)) {
-                QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+                QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
                 if(tabMouseOn != null) {
                     MouseChord chord = QTUtility.MakeMouseChord(MouseChord.Double, ModifierKeys);
                     BindAction action;
@@ -5167,7 +5159,7 @@ namespace QTTabBarLib {
         }
 
         private void tabControl1_MouseDown(object sender, MouseEventArgs e) {
-            QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+            QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
             DraggingTab = null;
             if(tabMouseOn != null) {
                 if(e.Button == MouseButtons.Left) {
@@ -5206,7 +5198,7 @@ namespace QTTabBarLib {
                 }
                 else {
                     int num;
-                    QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn(out num);
+                    QTabItem tabMouseOn = tabControl1.GetTabMouseOn(out num);
                     int index = tabControl1.TabPages.IndexOf(DraggingTab);
                     if((num > (tabControl1.TabCount - 1)) || (num < 0)) {
                         if((num == -1) && (ModifierKeys == Keys.Control)) {
@@ -5251,7 +5243,7 @@ namespace QTTabBarLib {
         }
 
         private void tabControl1_MouseUp(object sender, MouseEventArgs e) {
-            QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+            QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
             if(NowTabDragging && e.Button == MouseButtons.Left) {
                 Keys modifierKeys = ModifierKeys;
                 if(tabMouseOn == null) {
@@ -5314,7 +5306,7 @@ namespace QTTabBarLib {
         private void tabControl1_PointedTabChanged(object sender, QTabCancelEventArgs e) {
             if(pluginServer != null) {
                 if(e.Action == TabControlAction.Selecting) {
-                    QTabItem tabPage = (QTabItem)e.TabPage;
+                    QTabItem tabPage = e.TabPage;
                     pluginServer.OnPointedTabChanged(e.TabPageIndex, tabPage.CurrentIDL, tabPage.CurrentPath);
                 }
                 else if(e.Action == TabControlAction.Deselecting) {
@@ -5328,7 +5320,7 @@ namespace QTTabBarLib {
         }
 
         private void tabControl1_SelectedIndexChanged(object sender, EventArgs e) {
-            QTabItem selectedTab = (QTabItem)tabControl1.SelectedTab;
+            QTabItem selectedTab = tabControl1.SelectedTab;
             string currentPath = selectedTab.CurrentPath;
             if(IsSpecialFolderNeedsToTravel(currentPath) && LogEntryDic.ContainsKey(selectedTab.GetLogHash(true, 0))) {
                 NavigatedByCode = true;
@@ -5396,19 +5388,18 @@ namespace QTTabBarLib {
         }
 
         private void tabControl1_TabCountChanged(object sender, QTabCancelEventArgs e) {
-            if(pluginServer != null) {
-                QTabItem tabPage = (QTabItem)e.TabPage;
-                if(e.Action == TabControlAction.Selected) {
-                    pluginServer.OnTabAdded(e.TabPageIndex, tabPage.CurrentIDL, tabPage.CurrentPath);
-                }
-                else if(e.Action == TabControlAction.Deselected) {
-                    pluginServer.OnTabRemoved(e.TabPageIndex, tabPage.CurrentIDL, tabPage.CurrentPath);
-                }
+            if(pluginServer == null) return;
+            QTabItem tabPage = e.TabPage;
+            if(e.Action == TabControlAction.Selected) {
+                pluginServer.OnTabAdded(e.TabPageIndex, tabPage.CurrentIDL, tabPage.CurrentPath);
+            }
+            else if(e.Action == TabControlAction.Deselected) {
+                pluginServer.OnTabRemoved(e.TabPageIndex, tabPage.CurrentIDL, tabPage.CurrentPath);
             }
         }
 
         private void tabControl1_TabIconMouseDown(object sender, QTabCancelEventArgs e) {
-            ShowSubdirTip_Tab((QTabItem)e.TabPage, e.Action == TabControlAction.Selecting, e.TabPageIndex, false, e.Cancel);
+            ShowSubdirTip_Tab(e.TabPage, e.Action == TabControlAction.Selecting, e.TabPageIndex, false, e.Cancel);
         }
 
         private void tabSwitcher_Switched(object sender, ItemCheckEventArgs e) {
@@ -5417,7 +5408,7 @@ namespace QTTabBarLib {
 
         private void timerOnTab_Tick(object sender, EventArgs e) {
             timerOnTab.Enabled = false;
-            QTabItem tabMouseOn = (QTabItem)tabControl1.GetTabMouseOn();
+            QTabItem tabMouseOn = tabControl1.GetTabMouseOn();
             if(((tabMouseOn != null) && (tabMouseOn == tabForDD)) && tabControl1.TabPages.Contains(tabMouseOn)) {
                 if(Config.Tabs.DragOverTabOpensSDT) {
                     WindowUtils.BringExplorerToFront(ExplorerHandle);
@@ -5468,7 +5459,7 @@ namespace QTTabBarLib {
                             int focusedTabIndex = tabControl1.GetFocusedTabIndex();
                             if((-1 < focusedTabIndex) && (focusedTabIndex < tabControl1.TabCount)) {
                                 bool flag3 = focusedTabIndex == (tabControl1.TabCount - 1);
-                                if(CloseTab((QTabItem)tabControl1.TabPages[focusedTabIndex]) && flag3) {
+                                if(CloseTab(tabControl1.TabPages[focusedTabIndex]) && flag3) {
                                     tabControl1.FocusNextTab(true, false, false);
                                 }
                             }
@@ -5480,7 +5471,7 @@ namespace QTTabBarLib {
                             if((-1 >= index) || (index >= tabControl1.TabCount)) {
                                 break;
                             }
-                            ContextMenuedTab = (QTabItem)tabControl1.TabPages[index];
+                            ContextMenuedTab = tabControl1.TabPages[index];
                             Rectangle tabRect = tabControl1.GetTabRect(index, true);
                             contextMenuTab.Show(PointToScreen(new Point(tabRect.Right + 10, tabRect.Bottom - 10)));
                         }

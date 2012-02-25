@@ -51,7 +51,7 @@ namespace QTTabBarLib {
             }
             key = tempKey;
             GroupsManager.AddGroup(key, chkAllTabs.Checked 
-                    ? Tabs.Cast<QTabItem>().Select(item => item.CurrentPath) 
+                    ? Tabs.Select(item => item.CurrentPath) 
                     : new string[] { newPath });
         }
 

@@ -318,7 +318,6 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="QTabItem.cs" />
-    <Compile Include="QTabItemBase.cs" />
     <Compile Include="QTButtonBar.cs">
       <SubType>UserControl</SubType>
     </Compile>

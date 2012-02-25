@@ -434,6 +434,7 @@ namespace QTTabBarLib {
             if(tabBar != null) {
                 tabBar.rebarController.RefreshHeight();
             }
+            RefreshButtons();
 
             toolStrip.ResumeLayout();
             toolStrip.RaiseOnResize();

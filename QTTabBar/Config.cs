@@ -596,7 +596,6 @@ namespace QTTabBarLib {
             }
             PluginManager.RefreshPlugins();
             InstanceManager.LocalTabBroadcast(tabbar => tabbar.RefreshOptions());
-            InstanceManager.LocalBBarBroadcast(bbar => bbar.CreateItems());
             if(fBroadcast) {
                 // SyncTaskBarMenu(); todo
                 InstanceManager.StaticBroadcast(() => {

@@ -35,7 +35,7 @@ namespace QTTabBarLib {
         private SolidBrush brshInactv;
         private Color[] colorSet;
         private IContainer components;
-        private QTabItemBase draggingTab;
+        private QTabItem draggingTab;
         private bool fActiveTxtBold;
         private bool fAutoSubText;
         private bool fCloseBtnOnHover;
@@ -61,7 +61,7 @@ namespace QTTabBarLib {
         private bool fSubDirShown;
         private bool fSuppressDoubleClick;
         private bool fSuppressMouseUp;
-        private QTabItemBase hotTab;
+        private QTabItem hotTab;
         private int iCurrentRow;
         private int iFocusedTabIndex = -1;
         private int iMultipleType;
@@ -76,7 +76,7 @@ namespace QTTabBarLib {
         private int iToolTipIndex = -1;
         private int maxAllowedTabWidth = 10;
         private int minAllowedTabWidth = 10;
-        private QTabItemBase selectedTabPage;
+        private QTabItem selectedTabPage;
         private StringFormat sfTypoGraphic;
         private TabSizeMode sizeMode;
         private Padding sizingMargin;
@@ -286,7 +286,7 @@ namespace QTTabBarLib {
                 int num15 = num7 - num8;
                 if(num15 > 0) {
                     for(int m = 0; m < count; m++) {
-                        QTabItemBase base2 = tabPages[m];
+                        QTabItem base2 = tabPages[m];
                         Rectangle tabBounds = base2.TabBounds;
                         if(base2.Row > num8) {
                             base2.Row -= num8 + 1;
@@ -309,13 +309,13 @@ namespace QTTabBarLib {
             }
         }
 
-        private bool ChangeSelection(QTabItemBase tabToSelect, int index) {
+        private bool ChangeSelection(QTabItem tabToSelect, int index) {
             if(((Deselecting != null) && (this.iSelectedIndex > -1)) && (this.iSelectedIndex < tabPages.Count)) {
                 QTabCancelEventArgs e = new QTabCancelEventArgs(tabPages[this.iSelectedIndex], this.iSelectedIndex, false, TabControlAction.Deselecting);
                 Deselecting(this, e);
             }
             int iSelectedIndex = this.iSelectedIndex;
-            QTabItemBase selectedTabPage = this.selectedTabPage;
+            QTabItem selectedTabPage = this.selectedTabPage;
             this.iSelectedIndex = index;
             this.selectedTabPage = tabToSelect;
             if(Selecting != null) {
@@ -405,7 +405,7 @@ namespace QTTabBarLib {
                 fntDriveLetter.Dispose();
                 fntDriveLetter = null;
             }
-            foreach(QTabItemBase base2 in tabPages) {
+            foreach(QTabItem base2 in tabPages) {
                 if(base2 != null) {
                     base2.OnClose();
                 }
@@ -538,10 +538,10 @@ namespace QTTabBarLib {
             }
         }
 
-        private void DrawTab(Graphics g, Rectangle itemRct, int index, QTabItemBase tabHot, bool fVisualStyle) {
+        private void DrawTab(Graphics g, Rectangle itemRct, int index, QTabItem tabHot, bool fVisualStyle) {
             Rectangle rectangle2;
             Rectangle rctItem = rectangle2 = itemRct;
-            QTabItemBase base2 = tabPages[index];
+            QTabItem base2 = tabPages[index];
             bool bSelected = iSelectedIndex == index;
             bool fHot = base2 == tabHot;
             rectangle2.X += 2;
@@ -572,7 +572,7 @@ namespace QTTabBarLib {
                 }
                 g.DrawImage(QTUtility.ImageListGlobal.Images[base2.ImageKey], rect);
                 if(Config.Tabs.ShowDriveLetters) {
-                    string pathInitial = ((QTabItem)base2).PathInitial;
+                    string pathInitial = base2.PathInitial;
                     if(pathInitial.Length > 0) {
                         DrawDriveLetter(g, pathInitial, fntDriveLetter, rect, bSelected);
                     }
@@ -607,10 +607,10 @@ namespace QTTabBarLib {
             float num4 = (tabTextAlignment == StringAlignment.Center) ? Math.Max(((rectangle2.Width - num2) / 2f), 0f) : 0f;
             RectangleF rct = new RectangleF(rectangle2.X + num4, rectangle2.Y + num3, Math.Min((base2.TitleTextSize.Width + 2f), (rectangle2.Width - num4)), rectangle2.Height);
             if(fDrawShadow) {
-                DrawTextWithShadow(g, base2.Text, bSelected ? colorSet[0] : colorSet[1], bSelected ? colorSet[3] : colorSet[4], (bSelected && fActiveTxtBold) ? (base2.UnderLine ? fntBold_Underline : fntBold) : (base2.UnderLine ? fnt_Underline : Font), rct, sfTypoGraphic);
+                DrawTextWithShadow(g, base2.Text, bSelected ? colorSet[0] : colorSet[1], bSelected ? colorSet[3] : colorSet[4], (bSelected && fActiveTxtBold) ? (base2.Underline ? fntBold_Underline : fntBold) : (base2.Underline ? fnt_Underline : Font), rct, sfTypoGraphic);
             }
             else {
-                g.DrawString(base2.Text, (bSelected && fActiveTxtBold) ? (base2.UnderLine ? fntBold_Underline : fntBold) : (base2.UnderLine ? fnt_Underline : Font), bSelected ? brshActive : brshInactv, rct, sfTypoGraphic);
+                g.DrawString(base2.Text, (bSelected && fActiveTxtBold) ? (base2.Underline ? fntBold_Underline : fntBold) : (base2.Underline ? fnt_Underline : Font), bSelected ? brshActive : brshInactv, rct, sfTypoGraphic);
             }
             if(iFocusedTabIndex == index) {
                 Rectangle rectangle = rctItem;
@@ -751,13 +751,13 @@ namespace QTTabBarLib {
             return tabBounds;
         }
 
-        public QTabItemBase GetTabMouseOn() {
+        public QTabItem GetTabMouseOn() {
             Point pt = PointToClient(MousePosition);
             if(((upDown != null) && upDown.Visible) && upDown.Bounds.Contains(pt)) {
                 return null;
             }
-            QTabItemBase base2 = null;
-            QTabItemBase base3 = null;
+            QTabItem base2 = null;
+            QTabItem base3 = null;
             for(int i = 0; i < tabPages.Count; i++) {
                 if(GetItemRectWithInflation(i).Contains(pt)) {
                     if(base2 == null) {
@@ -778,10 +778,10 @@ namespace QTTabBarLib {
             return base2;
         }
 
-        public QTabItemBase GetTabMouseOn(out int index) {
+        public QTabItem GetTabMouseOn(out int index) {
             Point pt = PointToClient(MousePosition);
-            QTabItemBase base2 = null;
-            QTabItemBase base3 = null;
+            QTabItem base2 = null;
+            QTabItem base3 = null;
             int num = -1;
             int num2 = -1;
             for(int i = 0; i < tabPages.Count; i++) {
@@ -813,7 +813,7 @@ namespace QTTabBarLib {
             return base2;
         }
 
-        public Rectangle GetTabRect(QTabItemBase tab) {
+        public Rectangle GetTabRect(QTabItem tab) {
             Rectangle tabBounds = tab.TabBounds;
             if(fNeedToDrawUpDown) {
                 tabBounds.X += iScrollWidth;
@@ -850,7 +850,7 @@ namespace QTTabBarLib {
             vsr_MHot = new VisualStyleRenderer(VisualStyleElement.Tab.TopTabItem.Hot);
         }
 
-        private void InvalidateTabsOnMouseMove(QTabItemBase tabPage, int index, Point pnt) {
+        private void InvalidateTabsOnMouseMove(QTabItem tabPage, int index, Point pnt) {
             iTabMouseOnButtonsIndex = index;
             if(tabPage != hotTab) {
                 hotTab = tabPage;
@@ -903,7 +903,7 @@ namespace QTTabBarLib {
         protected override void OnMouseDoubleClick(MouseEventArgs e) {
             if(!fSuppressDoubleClick) {
                 int num;
-                QTabItemBase tabMouseOn = GetTabMouseOn(out num);
+                QTabItem tabMouseOn = GetTabMouseOn(out num);
                 if(((!fDrawCloseButton || (tabMouseOn == null)) || !HitTestOnButtons(tabMouseOn.TabBounds, e.Location, true, num == iSelectedIndex)) && ((!fDrawFolderImg || !fShowSubDirTip) || ((tabMouseOn == null) || !HitTestOnButtons(tabMouseOn.TabBounds, e.Location, false, num == iSelectedIndex)))) {
                     base.OnMouseDoubleClick(e);
                     fSuppressMouseUp = true;
@@ -913,7 +913,7 @@ namespace QTTabBarLib {
 
         protected override void OnMouseDown(MouseEventArgs e) {
             int num;
-            QTabItemBase tabMouseOn = GetTabMouseOn(out num);
+            QTabItem tabMouseOn = GetTabMouseOn(out num);
             if(tabMouseOn != null) {
                 bool cancel = e.Button == MouseButtons.Right;
                 if((!cancel && fDrawCloseButton) && HitTestOnButtons(tabMouseOn.TabBounds, e.Location, true, num == iSelectedIndex)) {
@@ -964,7 +964,7 @@ namespace QTTabBarLib {
             if(((e.Button == MouseButtons.Right) && !Parent.RectangleToScreen(Bounds).Contains(MousePosition)) && ((ItemDrag != null) && (draggingTab != null))) {
                 ItemDrag(this, new ItemDragEventArgs(e.Button, draggingTab));
             }
-            QTabItemBase tabMouseOn = GetTabMouseOn(out num);
+            QTabItem tabMouseOn = GetTabMouseOn(out num);
             InvalidateTabsOnMouseMove(tabMouseOn, num, e.Location);
             if((PointedTabChanged != null) && (num != iPointedChanged_LastRaisedIndex)) {
                 if(tabMouseOn != null) {
@@ -985,7 +985,7 @@ namespace QTTabBarLib {
                         toolTip.Active = false;
                     }
                     string toolTipText = tabMouseOn.ToolTipText;
-                    string str2 = ((QTabItem)tabMouseOn).TooltipText2;
+                    string str2 = tabMouseOn.ShellToolTip;
                     if(!string.IsNullOrEmpty(str2)) {
                         toolTipText = toolTipText + "\r\n" + str2;
                     }
@@ -1011,7 +1011,7 @@ namespace QTTabBarLib {
             }
             else {
                 int num;
-                QTabItemBase tabMouseOn = GetTabMouseOn(out num);
+                QTabItem tabMouseOn = GetTabMouseOn(out num);
                 if(((fDrawCloseButton && (e.Button != MouseButtons.Right)) && ((CloseButtonClicked != null) && (tabMouseOn != null))) && (!tabMouseOn.TabLocked && HitTestOnButtons(tabMouseOn.TabBounds, e.Location, true, num == iSelectedIndex))) {
                     if(e.Button == MouseButtons.Left) {
                         iTabMouseOnButtonsIndex = -1;
@@ -1036,7 +1036,7 @@ namespace QTTabBarLib {
             else {
                 fNeedToDrawUpDown = CalculateItemRectangle();
                 try {
-                    QTabItemBase tabMouseOn = GetTabMouseOn();
+                    QTabItem tabMouseOn = GetTabMouseOn();
                     bool fVisualStyle = !fForceClassic && VisualStyleRenderer.IsSupported;
                     if(fVisualStyle && (vsr_LPressed == null)) {
                         InitializeRenderer();
@@ -1063,7 +1063,7 @@ namespace QTTabBarLib {
         private void OnPaint_MultipleRow(PaintEventArgs e) {
             CalculateItemRectangle_MultiRows();
             try {
-                QTabItemBase tabMouseOn = GetTabMouseOn();
+                QTabItem tabMouseOn = GetTabMouseOn();
                 bool fVisualStyle = !fForceClassic && VisualStyleRenderer.IsSupported;
                 if(fVisualStyle && (vsr_LPressed == null)) {
                     InitializeRenderer();
@@ -1071,7 +1071,7 @@ namespace QTTabBarLib {
                 bool flag2 = false;
                 for(int i = 0; i < (iCurrentRow + 1); i++) {
                     for(int j = 0; j < tabPages.Count; j++) {
-                        QTabItemBase base3 = tabPages[j];
+                        QTabItem base3 = tabPages[j];
                         if(base3.Row == i) {
                             if(j != iSelectedIndex) {
                                 DrawTab(e.Graphics, base3.TabBounds, j, tabMouseOn, fVisualStyle);
@@ -1093,7 +1093,7 @@ namespace QTTabBarLib {
             }
         }
 
-        private void OnTabPageAdded(QTabItemBase tabPage, int index) {
+        private void OnTabPageAdded(QTabItem tabPage, int index) {
             if(index == 0) {
                 selectedTabPage = tabPage;
             }
@@ -1102,7 +1102,7 @@ namespace QTTabBarLib {
             }
         }
 
-        private void OnTabPageInserted(QTabItemBase tabPage, int index) {
+        private void OnTabPageInserted(QTabItem tabPage, int index) {
             if(index <= iSelectedIndex) {
                 iSelectedIndex++;
             }
@@ -1111,7 +1111,7 @@ namespace QTTabBarLib {
             }
         }
 
-        private void OnTabPageRemoved(QTabItemBase tabPage, int index) {
+        private void OnTabPageRemoved(QTabItem tabPage, int index) {
             if(!Disposing && (index != -1)) {
                 if(index == iSelectedIndex) {
                     iSelectedIndex = -1;
@@ -1149,7 +1149,7 @@ namespace QTTabBarLib {
                 return false;
             }
             iTabIndexOfSubDirShown = iFocusedTabIndex;
-            QTabItemBase tabPage = tabPages[iFocusedTabIndex];
+            QTabItem tabPage = tabPages[iFocusedTabIndex];
             int tabPageIndex = 0;
             if((iMultipleType == 0) && fNeedToDrawUpDown) {
                 tabPageIndex = iScrollWidth;
@@ -1222,7 +1222,7 @@ namespace QTTabBarLib {
                 if(fDrawFolderImg != Config.Tabs.ShowFolderIcon) {
                     fDrawFolderImg = Config.Tabs.ShowFolderIcon;
                     if(fDrawFolderImg) {
-                        foreach(QTabItemBase base2 in TabPages) {
+                        foreach(QTabItem base2 in TabPages) {
                             base2.ImageKey = base2.ImageKey;
                         }
                     }
@@ -1252,7 +1252,7 @@ namespace QTTabBarLib {
             return false;
         }
 
-        public bool SelectTab(QTabItemBase tabPage) {
+        public bool SelectTab(QTabItem tabPage) {
             int index = tabPages.IndexOf(tabPage);
             if(index == -1) {
                 throw new ArgumentException("arg was not found.");
@@ -1264,7 +1264,7 @@ namespace QTTabBarLib {
             if((index <= -1) || (index >= tabPages.Count)) {
                 throw new ArgumentOutOfRangeException("index," + index, "index is out of range.");
             }
-            QTabItemBase tabToSelect = tabPages[index];
+            QTabItem tabToSelect = tabPages[index];
             if(selectedTabPage != tabToSelect) {
                 ChangeSelection(tabToSelect, index);
             }
@@ -1273,7 +1273,7 @@ namespace QTTabBarLib {
             }
         }
 
-        public void SelectTabDirectly(QTabItemBase tabPage) {
+        public void SelectTabDirectly(QTabItem tabPage) {
             int index = tabPages.IndexOf(tabPage);
             selectedTabPage = tabPage;
             SelectedIndex = index;
@@ -1326,7 +1326,7 @@ namespace QTTabBarLib {
                 fntDriveLetter = new Font(Font.FontFamily, 8.25f);
             }
             catch {}
-            QTabItemBase.TabFont = Font;
+            QTabItem.TabFont = Font;
         }
 
         public void SetPseudoHotIndex(int index) {
@@ -1427,7 +1427,7 @@ namespace QTTabBarLib {
         }
 
         protected override void WndProc(ref Message m) {
-            QTabItemBase tabMouseOn;
+            QTabItem tabMouseOn;
             int num;
             int msg = m.Msg;
             switch(msg) {
@@ -1544,7 +1544,7 @@ namespace QTTabBarLib {
             }
         }
 
-        public QTabItemBase SelectedTab {
+        public QTabItem SelectedTab {
             get {
                 return tabPages[iSelectedIndex];
             }
@@ -1583,43 +1583,26 @@ namespace QTTabBarLib {
             }
         }
 
-        public sealed class QTabCollection : List<QTabItemBase> {
+        public sealed class QTabCollection : List<QTabItem> {
             private QTabControl Owner;
 
             public QTabCollection(QTabControl owner) {
                 Owner = owner;
             }
 
-            new public void Add(QTabItemBase tabPage) {
+            new public void Add(QTabItem tabPage) {
                 base.Add(tabPage);
                 Owner.OnTabPageAdded(tabPage, Count - 1);
                 Owner.Refresh();
             }
 
-            // I absolutely do not understand the point of this.
-            // It seems completely redundant.  Commenting it out for now.
-            /*
-            new public IEnumerator<QTabItemBase> GetEnumerator() {
-                //<GetEnumerator>d__0 d__ = new <GetEnumerator>d__0(0);
-                //d__.<>4__this = this;
-                //return d__;
-
-                QTabItemBase[] tmpArr = this.ToArray();
-                for(int i = 0; i < tmpArr.Length; ++i) {
-                    if(this.Contains(tmpArr[i])) {
-                        yield return tmpArr[i];
-                    }
-                }
-            }
-            */
-
-            new public void Insert(int index, QTabItemBase tabPage) {
+            new public void Insert(int index, QTabItem tabPage) {
                 base.Insert(index, tabPage);
                 Owner.OnTabPageInserted(tabPage, index);
                 Owner.Refresh();
             }
 
-            new public bool Remove(QTabItemBase tabPage) {
+            new public bool Remove(QTabItem tabPage) {
                 int index = IndexOf(tabPage);
                 Owner.OnTabPageRemoved(tabPage, index);
                 bool flag = base.Remove(tabPage);
@@ -1631,7 +1614,7 @@ namespace QTTabBarLib {
                 int selectedIndex = Owner.SelectedIndex;
                 int num2 = (indexSource > indexDestination) ? indexSource : indexDestination;
                 int num3 = (indexSource > indexDestination) ? indexDestination : indexSource;
-                QTabItemBase item = base[indexSource];
+                QTabItem item = base[indexSource];
                 base.Remove(item);
                 base.Insert(indexDestination, item);
                 if((num2 >= selectedIndex) && (selectedIndex >= num3)) {
@@ -1662,87 +1645,6 @@ namespace QTTabBarLib {
                 }
                 Owner.Refresh();
             }
-
-#if false
-      [CompilerGenerated]
-      private sealed class <GetEnumerator>d__0 : IEnumerator<QTabItemBase>, IEnumerator, IDisposable
-      {
-        private int <>1__state;
-        private QTabItemBase <>2__current;
-        public QTabControl.QTabCollection <>4__this;
-        public int <i>5__2;
-        public QTabItemBase[] <tmpArr>5__1;
-        
-        [DebuggerHidden]
-        public <GetEnumerator>d__0(int <>1__state)
-        {
-          this.<>1__state = <>1__state;
-        }
-        
-        private bool MoveNext()
-        {
-          switch (this.<>1__state)
-          {
-            case 0:
-              this.<>1__state = -1;
-              this.<tmpArr>5__1 = this.<>4__this.ToArray();
-              this.<i>5__2 = 0;
-              goto Label_0083;
-            
-            case 1:
-              this.<>1__state = -1;
-              goto Label_0075;
-            
-            default:
-              goto Label_0093;
-          }
-        Label_0075:
-          this.<i>5__2++;
-        Label_0083:
-          if (this.<i>5__2 < this.<tmpArr>5__1.Length)
-          {
-            if (this.<>4__this.Contains(this.<tmpArr>5__1[this.<i>5__2]))
-            {
-              this.<>2__current = this.<tmpArr>5__1[this.<i>5__2];
-              this.<>1__state = 1;
-              return true;
-            }
-            goto Label_0075;
-          }
-        Label_0093:
-          return false;
-        }
-        
-        [DebuggerHidden]
-        void IEnumerator.Reset()
-        {
-          throw new NotSupportedException();
-        }
-        
-        void IDisposable.Dispose()
-        {
-        }
-        
-        QTabItemBase IEnumerator<QTabItemBase>.Current
-        {
-          [DebuggerHidden]
-          get
-          {
-            return this.<>2__current;
-          }
-        }
-        
-        object IEnumerator.Current
-        {
-          [DebuggerHidden]
-          get
-          {
-            return this.<>2__current;
-          }
-        }
-      }
-#endif
-
         }
     }
 }
