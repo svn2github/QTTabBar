@@ -192,6 +192,7 @@ namespace QTTabBarLib {
         }
 
         public QTabItem(string title, string path, QTabControl parent) {
+            Owner = parent;
             Comment = string.Empty;
             stckHistoryForward = new Stack<LogData>();
             stckHistoryBackward = new Stack<LogData>();
@@ -201,7 +202,6 @@ namespace QTTabBarLib {
             CurrentPath = path;
             ToolTipText = string.Empty;
             titleText = title;
-            Owner = parent;
             if(font == null) {
                 font = new Font(parent.Font, FontStyle.Bold);
             }

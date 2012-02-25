@@ -3726,6 +3726,8 @@ namespace QTTabBarLib {
                         main.tabControl1.SetRedraw(false);
                         foreach(QTabItem tab in tabs) {
                             tab.ResetOwner(main.tabControl1);
+                            tab.ImageKey = tab.ImageKey; // this is so dumb, but unfortunately necessary
+                            // todo: make it less dumb.
                         }
                         QTabItem.CheckSubTexts(main.tabControl1);
                         TryCallButtonBar(bbar => bbar.RefreshButtons());
