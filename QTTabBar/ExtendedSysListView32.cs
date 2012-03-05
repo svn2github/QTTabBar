@@ -26,6 +26,7 @@ using QTTabBarLib.Interop;
 namespace QTTabBarLib {
     internal class ExtendedSysListView32 : ExtendedListViewCommon {
 
+        private static SolidBrush sbAlternate;
         private NativeWindowController EditController;
         private List<int> lstColumnFMT;
         private bool fListViewHasFocus;
@@ -474,10 +475,10 @@ namespace QTTabBarLib {
                             if(structure.iSubItem > 0 && (!fullRowSel || !drawingHotItem)) {
                                 if(!fullRowSel || (iListViewItemState & (LVIS.SELECTED | LVIS.DROPHILITED)) == 0) {
                                     using(Graphics graphics = Graphics.FromHdc(structure.nmcd.hdc)) {
-                                        if(QTUtility.sbAlternate == null) {
-                                            QTUtility.sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
+                                        if(sbAlternate == null || sbAlternate.Color != Config.Tweaks.AltRowBackgroundColor) {
+                                            sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
                                         }
-                                        graphics.FillRectangle(QTUtility.sbAlternate, structure.nmcd.rc.ToRectangle());
+                                        graphics.FillRectangle(sbAlternate, structure.nmcd.rc.ToRectangle());
                                     }
                                 }
                             }
@@ -512,15 +513,15 @@ namespace QTTabBarLib {
                             IntPtr ptr3 = Marshal.AllocHGlobal(Marshal.SizeOf(lvitem));
                             Marshal.StructureToPtr(lvitem, ptr3, false);
                             PInvoke.SendMessage(ListViewController.Handle, LVM.GETITEM, IntPtr.Zero, ptr3);
-                            if(QTUtility.sbAlternate == null) {
-                                QTUtility.sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
+                            if(sbAlternate == null) {
+                                sbAlternate = new SolidBrush(Config.Tweaks.AltRowBackgroundColor);
                             }
                             using(Graphics graphics2 = Graphics.FromHdc(structure.nmcd.hdc)) {
                                 Rectangle rect = rc.ToRectangle();
                                 if(flag5) {
                                     rect = new Rectangle(rc.left + 1, rc.top, rc.Width - 1, rc.Height - 1);
                                 }
-                                graphics2.FillRectangle(QTUtility.sbAlternate, rect);
+                                graphics2.FillRectangle(sbAlternate, rect);
                                 if(QTUtility.IsXP && ((structure.iSubItem == 0) || flag6)) {
                                     flag4 = (iListViewItemState & 8) == 8;
                                     if((iListViewItemState != 0) && (((iListViewItemState == 1) && fListViewHasFocus) || (iListViewItemState != 1))) {

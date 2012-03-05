@@ -119,7 +119,7 @@ namespace QTTabBarLib {
         }
 
         public static void LoadApps() {
-            List<UserApp> list = new List<UserApp>();
+            appList = new List<UserApp>();
             using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + RegConst.Apps)) {
                 int i = 0;
                 while(true) {
@@ -130,14 +130,14 @@ namespace QTTabBarLib {
                             if(name == null) continue;
                             int children = (int)akey.GetValue("children", -1);
                             if(children != -1) {
-                                list.Add(new UserApp(name, children));
+                                appList.Add(new UserApp(name, children));
                             }
                             else {
                                 string path = (string)akey.GetValue("path", "");
                                 string args = (string)akey.GetValue("args", "");
                                 string wdir = (string)akey.GetValue("wdir", "");
                                 Keys shortcut = (Keys)akey.GetValue("key", Keys.None);
-                                list.Add(new UserApp(name, path, args, wdir, shortcut));
+                                appList.Add(new UserApp(name, path, args, wdir, shortcut));
                             }
                         }
                         catch {
@@ -145,7 +145,6 @@ namespace QTTabBarLib {
                     }
                 }
             }
-            UserApps = list;
         }
 
         public static void SaveApps() {
@@ -167,7 +166,7 @@ namespace QTTabBarLib {
                     }
                 }
             }
-            // todo: sync
+            InstanceManager.StaticBroadcast(LoadApps);
         }
 
         public static void Execute(UserApp app, ShellBrowserEx shellBrowser) {

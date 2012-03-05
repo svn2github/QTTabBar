@@ -320,7 +320,7 @@ namespace QTTabBarLib {
         }
 
         public static string MakeVersionString() {
-            if(QTUtility.fIsDevelopmentVersion) {
+            if(QTUtility.IS_DEV_VERSION) {
                 return "DevBuild: " + QTUtility.GetLinkerTimestamp();
             }
             else {

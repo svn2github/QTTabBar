@@ -1639,7 +1639,7 @@ namespace QTTabBarLib {
             }*/
 
             Application.EnableVisualStyles();
-            if(QTUtility.NowDebugging) {
+            if(QTUtility.NOW_DEBUGGING) {
                 CheckForIllegalCrossThreadCalls = true;
             }
             ReadSetting();
@@ -1813,7 +1813,8 @@ namespace QTTabBarLib {
                             string[] strArray =
                                     Marshal.PtrToStringAuto(copydatastruct.lpData).Split(QTUtility.SEPARATOR_CHAR);
                             if((strArray.Length > 1) && (strArray[1].Length > 0)) {
-                                QTUtility.PathToSelectInCommandLineArg = strArray[1];
+                                //QTUtility.PathToSelectInCommandLineArg = strArray[1];
+                                // todo...
                             }
                             QTUtility.fExplorerPrevented = true;
                             try {

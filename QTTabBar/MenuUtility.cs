@@ -22,11 +22,12 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms;
-using Microsoft.Win32;
 using QTTabBarLib.Interop;
 
 namespace QTTabBarLib {
     internal static class MenuUtility {
+        private static Font StartUpTabFont;
+
         // TODO: this is absent from Quizo's sources.  Figure out why.
         private static void AddChildrenOnOpening(DirectoryMenuItem parentItem) {
             bool fTruncated;
@@ -103,11 +104,10 @@ namespace QTTabBarLib {
                 item.SetImageReservationKey(group.Paths[0], null);
                 dropDown.AddItem(item, key);
                 if(!group.Startup) continue;
-                if(QTUtility.StartUpTabFont == null) {
-                    // todo, I don't like this here.
-                    QTUtility.StartUpTabFont = new Font(item.Font, FontStyle.Underline);
+                if(StartUpTabFont == null) {
+                    StartUpTabFont = new Font(item.Font, FontStyle.Underline);
                 }
-                item.Font = QTUtility.StartUpTabFont;
+                item.Font = StartUpTabFont;
             }
             dropDownItem.Enabled = dropDown.Items.Count > 0;
         }

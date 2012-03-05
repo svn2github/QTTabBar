@@ -585,15 +585,6 @@ namespace QTTabBarLib {
             QTUtility.ExecutedPathsList.MaxCapacity = Config.Misc.FileHistoryCount;
             DropDownMenuBase.InitializeMenuRenderer();
             ContextMenuStripEx.InitializeMenuRenderer();
-            if(Config.Tweaks.AlternateRowColors) {
-                Color color = Config.Tweaks.AltRowBackgroundColor;
-                if(QTUtility.sbAlternate == null) {
-                    QTUtility.sbAlternate = new SolidBrush(color);
-                }
-                else {
-                    QTUtility.sbAlternate.Color = color;
-                }
-            }
             PluginManager.RefreshPlugins();
             InstanceManager.LocalTabBroadcast(tabbar => tabbar.RefreshOptions());
             if(fBroadcast) {

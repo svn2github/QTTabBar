@@ -34,46 +34,52 @@ using QTTabBarLib.Interop;
 namespace QTTabBarLib {
     internal static class QTUtility {
         internal static readonly Version BetaRevision = new Version(0, 3);
-        internal static PathList ClosedTabHistoryList = new PathList(0x10);
-        internal static string CreateWindowTMPGroup = string.Empty;
-        internal static string CreateWindowTMPPath = string.Empty;
         internal static readonly Version CurrentVersion = new Version(1, 5, 0, 0);
-        internal static Dictionary<string, string> DisplayNameCacheDic = new Dictionary<string, string>();
-        internal static PathList ExecutedPathsList = new PathList(0x10);
-        internal static bool fExplorerPrevented;
+        internal const int FIRST_MOUSE_ONLY_ACTION = 1000;
         internal const int FLAG_KEYENABLED = 0x100000;
-        internal static bool fIsDevelopmentVersion = true;  // <----------------- Change me before releasing!
-        internal static bool fRestoreFolderTree;
-        internal static bool fSingleClick;
-        internal static int iIconUnderLineVal;
         internal const string IMAGEKEY_FOLDER = "folder";
         internal const string IMAGEKEY_MYNETWORK = "mynetwork";
         internal const string IMAGEKEY_NOEXT = "noext";
         internal const string IMAGEKEY_NOIMAGE = "noimage";
-        internal static ImageList ImageListGlobal;
+        internal const bool IS_DEV_VERSION = true;  // <----------------- Change me before releasing!
         internal static readonly bool IsRTL = CultureInfo.CurrentCulture.TextInfo.IsRightToLeft;
         internal static readonly bool IsWin7 = Environment.OSVersion.Version >= new Version(6, 1);
         internal static readonly bool IsXP = Environment.OSVersion.Version.Major <= 5;
-        internal static Dictionary<string, byte[]> ITEMIDLIST_Dic_Session = new Dictionary<string, byte[]>();
-        internal static List<string> LockedTabsToRestoreList = new List<string>();
-        internal const int FIRST_MOUSE_ONLY_ACTION = 1000;
-        internal static List<string> NoCapturePathsList = new List<string>();
-        internal static bool NowDebugging = 
+        internal static readonly string PATH_MYNETWORK = IsXP
+                ? "::{208D2C60-3AEA-1069-A2D7-08002B30309D}"
+                : "::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}";
+        internal static readonly string PATH_SEARCHFOLDER = IsXP
+                ? "::{E17D4FC0-5564-11D1-83F2-00A0C90DC849}"
+                : "::{9343812E-1C37-4A49-A12E-4B2D810D956B}";
+        internal const string REGUSER = RegConst.Root;
+        internal static readonly char[] SEPARATOR_CHAR = new char[] { ';' };
+        internal const string SEPARATOR_PATH_HASH_SESSION = "*?*?*";
+        internal const bool NOW_DEBUGGING =
 #if DEBUG
             true;
 #else
             false;
 #endif
-        internal static string PATH_MYNETWORK;
-        internal static string PATH_SEARCHFOLDER;
-        internal static string PathToSelectInCommandLineArg;
-        internal const string REGUSER = RegConst.Root;
+
+        
+        // TODO: almost all of these need to be either sync'd or removed.
+        internal static PathList ClosedTabHistoryList = new PathList(0x10);
+        internal static string CreateWindowTMPGroup = string.Empty;
+        internal static string CreateWindowTMPPath = string.Empty;
+        internal static Dictionary<string, string> DisplayNameCacheDic = new Dictionary<string, string>();
+        internal static PathList ExecutedPathsList = new PathList(0x10);
+        internal static bool fExplorerPrevented;
+        internal static bool fRestoreFolderTree;
+        internal static bool fSingleClick;
+        internal static int iIconUnderLineVal;
+        internal static ImageList ImageListGlobal;
+        internal static Dictionary<string, byte[]> ITEMIDLIST_Dic_Session = new Dictionary<string, byte[]>();
+        internal static List<string> LockedTabsToRestoreList = new List<string>();
+        internal static List<string> NoCapturePathsList = new List<string>();
         internal static string[] ResMain;
         internal static string[] ResMisc;
         internal static bool RestoreFolderTree_Hide;
         internal static SolidBrush sbAlternate;
-        internal static readonly char[] SEPARATOR_CHAR = new char[] { ';' };
-        internal const string SEPARATOR_PATH_HASH_SESSION = "*?*?*";
         internal static Font StartUpTabFont;
         internal static Dictionary<string, string[]> TextResourcesDic;
         internal static List<byte[]> TMPIDLList = new List<byte[]>();
@@ -138,15 +144,7 @@ namespace QTTabBarLib {
                         }
                     }
                 }
-                if(!IsXP) {
-                    PATH_SEARCHFOLDER = "::{9343812E-1C37-4A49-A12E-4B2D810D956B}";
-                    PATH_MYNETWORK = "::{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}";
-                }
-                else {
-                    PATH_SEARCHFOLDER = "::{E17D4FC0-5564-11D1-83F2-00A0C90DC849}";
-                    PATH_MYNETWORK = "::{208D2C60-3AEA-1069-A2D7-08002B30309D}";
-                    GetShellClickMode();
-                }
+                GetShellClickMode();
 
                 // Initialize plugins
                 PluginManager.Initialize();

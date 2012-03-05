@@ -289,28 +289,12 @@ namespace QTTabBarLib {
             contextMenuDropped.Show(MousePosition);
         }
 
-        // TODO: Kill all of these.
-        private void AsyncComplete(IAsyncResult ar) {
-            AsyncResult result = (AsyncResult)ar;
-            ((MethodInvoker)result.AsyncDelegate).EndInvoke(ar);
-            if(IsHandleCreated) {
-                Invoke(new NavigationCompleteCallback(CallBackDoOpenGroups), new object[] { result.AsyncState, IntPtr.Zero });
-            }
-        }
-
+        // TODO: Kill this.
         private void AsyncComplete_FolderTree(IAsyncResult ar) {
             AsyncResult result = (AsyncResult)ar;
             ((WaitTimeoutCallback)result.AsyncDelegate).EndInvoke(ar);
             if(IsHandleCreated) {
                 Invoke(new FormMethodInvoker(CallbackFolderTree), new object[] { result.AsyncState });
-            }
-        }
-
-        private void AsyncComplete_MultiPath(IAsyncResult ar) {
-            AsyncResult result = (AsyncResult)ar;
-            ((MethodInvoker)result.AsyncDelegate).EndInvoke(ar);
-            if(IsHandleCreated) {
-                Invoke(new FormMethodInvoker(CallbackMultiPath), new object[] { result.AsyncState });
             }
         }
 
@@ -338,26 +322,6 @@ namespace QTTabBarLib {
             }
             lastAttemptedBrowseObjectIDL = target.IDL;
             return false;
-        }
-
-        private void CallBackDoOpenGroups(object obj, IntPtr ptr) {
-            string[] strArray = (string[])obj;
-            tabControl1.SetRedraw(false);
-            foreach(string str in strArray) {
-                OpenGroup(str, false);
-            }
-            tabControl1.SetRedraw(true);
-            InstanceManager.RemoveFromTrayIcon(Handle);
-        }
-
-        private void CallbackFirstNavComp() {
-            int num = 0;
-            while(!FirstNavigationCompleted) {
-                Thread.Sleep(100);
-                if(++num > 100) {
-                    return;
-                }
-            }
         }
 
         private void CallbackFolderTree(object obj) {
@@ -1979,8 +1943,11 @@ namespace QTTabBarLib {
                 if(Config.Window.CaptureNewWindows && ModifierKeys != Keys.Control && InstanceManager.GetTotalInstanceCount() > 0) {
                     string selectMe = GetNameToSelectFromCommandLineArg();
                     InstanceManager.BeginInvokeMain(tabbar => {
-                        QTUtility.PathToSelectInCommandLineArg = selectMe;
                         tabbar.OpenNewTab(path);
+                        if(selectMe != "") {
+                            tabbar.ShellBrowser.TrySetSelection(
+                                    new Address[] { new Address(selectMe) }, null, true);    
+                        }
                         tabbar.RestoreWindow();
                     });
                     fNowQuitting = true;
@@ -2223,11 +2190,6 @@ namespace QTTabBarLib {
                             ShellBrowser.TrySetSelection(selectedItemsAt, str3, true);
                         }
                     }
-                    else if(!string.IsNullOrEmpty(QTUtility.PathToSelectInCommandLineArg)) {
-                        Address[] addresses = new Address[] { new Address(QTUtility.PathToSelectInCommandLineArg) };
-                        ShellBrowser.TrySetSelection(addresses, null, true);
-                        QTUtility.PathToSelectInCommandLineArg = string.Empty;
-                    }
                     if(QTUtility.RestoreFolderTree_Hide) {
                         new WaitTimeoutCallback(WaitTimeout).BeginInvoke(150, AsyncComplete_FolderTree, false);
                     }
@@ -2344,8 +2306,13 @@ namespace QTTabBarLib {
                 case WM.ACTIVATE: {
                     int num3 = ((int) msg.WParam) & 0xffff;
                     if(num3 > 0) {
-                        InstanceManager.PushTabBarInstance(this);
-                        InstanceManager.RemoveFromTrayIcon(Handle);
+                        // I can't figure out why, but calling these methods synchronously
+                        // prevents the window from being restored when minimized.
+                        // I guess neither has to synchronous anyway, so...
+                        BeginInvoke(new Action(() => {
+                            InstanceManager.PushTabBarInstance(this);
+                            InstanceManager.RemoveFromTrayIcon(Handle);
+                        }));
                     }
                     else {
                         listView.HideThumbnailTooltip(1);

@@ -60,7 +60,7 @@ namespace QTTabBarLib {
         }
 
         public static void LoadGroups() {
-            List<Group> list = new List<Group>();
+            groupList = new List<Group>();
             using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegConst.Root + RegConst.Groups)) {
                 int i = 0;
                 while(true) {
@@ -78,14 +78,14 @@ namespace QTTabBarLib {
                                 if(path == null) break;
                                 paths.Add(path);
                             }
-                            list.Add(new Group(name, shortcut, startup, paths));
+                            groupList.Add(new Group(name, shortcut, startup, paths));
                         }
                         catch {
                         }
                     }
                 }
             }
-            Groups = list;
+            groupDict = groupList.ToDictionary(g => g.Name, g => g);
         }
 
         public static void SaveGroups() {
@@ -103,8 +103,11 @@ namespace QTTabBarLib {
                     }
                 }
             }
-            // todo: sync
-            InstanceManager.ButtonBarBroadcast(bbar => bbar.RefreshButtons(), true);
+            InstanceManager.LocalBBarBroadcast(bbar => bbar.RefreshButtons());
+            InstanceManager.StaticBroadcast(() => {
+                LoadGroups();
+                InstanceManager.LocalBBarBroadcast(bbar => bbar.RefreshButtons());
+            });
             // todo: desktop
         }
 

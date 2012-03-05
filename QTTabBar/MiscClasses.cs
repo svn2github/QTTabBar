@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -180,10 +181,8 @@ namespace QTTabBarLib {
     [Serializable]
     public class SerializeDelegate : ISerializable {
         public Delegate Delegate { get; private set; }
-        private bool allowNSF;
-        public SerializeDelegate(Delegate del, bool allowNSF = false) {
+        public SerializeDelegate(Delegate del) {
             Delegate = del;
-            this.allowNSF = allowNSF;
         }
 
         public SerializeDelegate(SerializationInfo info, StreamingContext context) {
@@ -214,20 +213,18 @@ namespace QTTabBarLib {
             else {
                 info.AddValue("isSerializable", false);
                 info.AddValue("method", Delegate.Method);
-                info.AddValue("class", new AnonymousClassWrapper(Delegate.Method.DeclaringType, Delegate.Target, allowNSF));
+                info.AddValue("class", new AnonymousClassWrapper(Delegate.Method.DeclaringType, Delegate.Target));
             }
         }
 
         [Serializable]
         private class AnonymousClassWrapper : ISerializable {
-            private bool allowNSF;
             private Type type;
             public object obj;
             
-            internal AnonymousClassWrapper(Type type, object obj, bool allowNSF) {
+            internal AnonymousClassWrapper(Type type, object obj) {
                 this.type = type;
                 this.obj = obj;
-                this.allowNSF = allowNSF;
             }
 
             internal AnonymousClassWrapper(SerializationInfo info, StreamingContext context) {
@@ -258,8 +255,9 @@ namespace QTTabBarLib {
                     if(typeof(Delegate).IsAssignableFrom(field.FieldType)) {
                         info.AddValue(field.Name, new SerializeDelegate((Delegate)field.GetValue(obj)));
                     }
-                    else if(allowNSF && !field.FieldType.IsSerializable) {
-                        info.AddValue(field.Name, new AnonymousClassWrapper(field.FieldType, field.GetValue(obj), true));
+                    else if(!field.FieldType.IsSerializable) {
+                        Debug.Assert(field.Name.Contains("<>")); // compiler-generated only
+                        info.AddValue(field.Name, new AnonymousClassWrapper(field.FieldType, field.GetValue(obj)));
                     }
                     else {
                         info.AddValue(field.Name, field.GetValue(obj));
