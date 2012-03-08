@@ -52,17 +52,22 @@ namespace QTTabBarLib {
         }
 
         public static T DoQuery<T>(Query<T> query) {
-            return (T)automationDispatch.Invoke(new Func<T>(() => {
-                try {
-                    using(AutomationElementFactory factory = new AutomationElementFactory(pAutomation)) {
-                        return query(factory);
-                    }    
-                }
-                catch(Exception exception) {
-                    QTUtility2.MakeErrorLog(exception, "Automation Thread");
-                    return default(T);
-                }
-            }), DispatcherPriority.Normal);
+            try {
+                return (T)automationDispatch.Invoke(new Func<T>(() => {
+                    try {
+                        using(AutomationElementFactory factory = new AutomationElementFactory(pAutomation)) {
+                            return query(factory);
+                        }
+                    }
+                    catch(Exception exception) {
+                        QTUtility2.MakeErrorLog(exception, "Automation Thread");
+                        return default(T);
+                    }
+                }), DispatcherPriority.Normal);                
+            }
+            catch {
+                return default(T);
+            }
         }
     }
 

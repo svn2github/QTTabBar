@@ -63,11 +63,12 @@ namespace QTTabBarLib {
 
         
         // TODO: almost all of these need to be either sync'd or removed.
-        internal static PathList ClosedTabHistoryList = new PathList(0x10);
+        // TODO: we should store actual TabItems, not just strings.
+        internal static UniqueList<string> ClosedTabHistoryList = new UniqueList<string>(16);
         internal static string CreateWindowTMPGroup = string.Empty;
         internal static string CreateWindowTMPPath = string.Empty;
         internal static Dictionary<string, string> DisplayNameCacheDic = new Dictionary<string, string>();
-        internal static PathList ExecutedPathsList = new PathList(0x10);
+        internal static UniqueList<string> ExecutedPathsList = new UniqueList<string>(16);
         internal static bool fExplorerPrevented;
         internal static bool fRestoreFolderTree;
         internal static bool fSingleClick;
@@ -124,14 +125,14 @@ namespace QTTabBarLib {
                             if(key2 != null) {
                                 List<string> collection = key2.GetValueNames()
                                         .Select(str4 => (string)key2.GetValue(str4)).ToList();
-                                ClosedTabHistoryList = new PathList(collection, Config.Misc.TabHistoryCount);
+                                ClosedTabHistoryList = new UniqueList<string>(collection, Config.Misc.TabHistoryCount);
                             }
                         }
                         using(RegistryKey key3 = key.CreateSubKey("RecentFiles")) {
                             if(key3 != null) {
                                 List<string> list2 = key3.GetValueNames().Select(str5 =>
                                         (string)key3.GetValue(str5)).ToList();
-                                ExecutedPathsList = new PathList(list2, Config.Misc.FileHistoryCount);
+                                ExecutedPathsList = new UniqueList<string>(list2, Config.Misc.FileHistoryCount);
                             }
                         }
                         RefreshLockedTabsList();
