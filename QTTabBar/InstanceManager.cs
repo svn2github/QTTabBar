@@ -374,15 +374,21 @@ namespace QTTabBarLib {
         }
 
         public static void BeginInvokeMain(Action<QTTabBarClass> action) {
-            ExecuteOnMainProcess(() => LocalInvokeMain(action), true);
+            ExecuteOnMainProcess(() => LocalInvokeMain(action, true), true);
         }
 
-        public static void LocalInvokeMain(Action<QTTabBarClass> action) {
+        public static void LocalInvokeMain(Action<QTTabBarClass> action, bool async = false) {
             QTTabBarClass instance;
             using(new Keychain(rwLockTabBar, false)) {
                 instance = sdTabHandles.Count == 0 ? null : sdTabHandles.Peek();
             }
-            if(instance != null) instance.Invoke(action, instance);
+            if(instance == null) return;
+            if(async) {
+                instance.BeginInvoke(action, instance);    
+            }
+            else {
+                instance.Invoke(action, instance);   
+            }
         }
 
         public static void RegisterButtonBar(QTButtonBar bbar) {
