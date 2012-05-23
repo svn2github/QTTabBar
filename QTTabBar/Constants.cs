@@ -25,6 +25,7 @@ namespace QTTabBarLib {
         public const string Config = @"Config\";
         public const string Groups = @"Groups\";
         public const string Apps = @"UserApps\";
+        public const string StaticReg = @"Shared\";
     }
 
     internal static class MC {

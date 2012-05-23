@@ -45,6 +45,30 @@ namespace QTTabBarLib {
             }
         }
 
+        public void DeleteSelection(bool fNuke) {
+            List<string> lstPaths = new List<string>();
+            foreach(var idlw in GetItems(true)) {
+                if(idlw.HasPath /* && idlw.CanDelete */ ) { // todo
+                    lstPaths.Add(idlw.Path);
+                }
+                else {
+                    // not deletable object found, cancel
+                    System.Media.SystemSounds.Beep.Play();
+                    return;
+                }
+            }
+
+            if(lstPaths.Count > 0) {
+                IntPtr handle;
+                shellBrowser.GetWindow(out handle);
+                ShellMethods.DeleteFile(lstPaths, fNuke, handle);
+            }
+            else {
+                // no item selected
+                System.Media.SystemSounds.Beep.Play();
+            }
+        }
+
         public void Dispose() {
             if(shellBrowser != null) {
                 Marshal.FinalReleaseComObject(shellBrowser);
@@ -222,6 +246,7 @@ namespace QTTabBarLib {
             }
         }
 
+        // todo: idlify.
         public bool TryGetHotTrackPath(int iItem, out string path) {
             return TryGetHotTrackPath(iItem, out path, null);
         }

@@ -224,12 +224,11 @@ namespace QTTabBarLib {
         }
 
         public override void HideSubDirTip(int iReason = -1) {
-            if((subDirTip != null) && subDirTip.IsShowing) {
-                bool fForce = iReason < 0;
-                if(fForce || !subDirTip.IsShownByKey) {
-                    subDirTip.HideSubDirTip(fForce);
-                    subDirIndex = -1;
-                }
+            if(subDirTip == null || !subDirTip.IsShowing) return;
+            bool fForce = iReason < 0;
+            if(fForce || !subDirTip.IsShownByKey) {
+                subDirTip.HideSubDirTip(fForce);
+                subDirIndex = -1;
             }
         }
 

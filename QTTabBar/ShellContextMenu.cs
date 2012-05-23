@@ -98,19 +98,16 @@ namespace QTTabBarLib {
                                     else if(commandID == COMMANDID_OPENPARENT) {
                                         if(idlw.HasPath) {
                                             try {
-                                                string parentPath = Path.GetDirectoryName(idlw.Path) ?? "";				// idlw.Path is guaranteed file system...
-                                                if(Directory.Exists(parentPath)) {
-                                                    QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
-                                                    if(tabbar == null) {
-                                                        using(IDLWrapper wrapper = new IDLWrapper(parentPath)) {
-                                                            tabbar.OpenNewTabOrWindow(wrapper);    
+                                                QTTabBarClass tabbar = InstanceManager.GetThreadTabBar();
+                                                if(tabbar != null) {
+                                                    using(IDLWrapper idlwParent = idlw.GetParent()) {
+                                                        if(idlwParent.Available) {
+                                                            tabbar.OpenNewTabOrWindow(idlwParent);
                                                         }
                                                     }
-                                                    else {
-                                                        System.Diagnostics.Process.Start(parentPath);
-                                                    }
-                                                    nResult = COMMANDID_OPENPARENT;
                                                 }
+                                                // DesktopTool will handle it by itself
+                                                nResult = COMMANDID_OPENPARENT;
                                             }
                                             catch {
                                                 System.Media.SystemSounds.Asterisk.Play();

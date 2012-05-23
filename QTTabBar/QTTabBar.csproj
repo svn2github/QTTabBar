@@ -187,6 +187,7 @@
     <Compile Include="Spinner.xaml.cs">
       <DependentUpon>Spinner.xaml</DependentUpon>
     </Compile>
+    <Compile Include="StaticReg.cs" />
     <Compile Include="TrayIcon.cs" />
     <Compile Include="TreeViewWrapper.cs" />
     <Compile Include="Interop\INameSpaceTreeControl.cs" />
@@ -321,7 +322,7 @@
     <Compile Include="QTButtonBar.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="QTCoTaskBarClass.cs">
+    <Compile Include="QTDesktopTool.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="QTTabBarClass.cs">

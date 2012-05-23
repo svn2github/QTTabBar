@@ -398,5 +398,25 @@ namespace QTTabBarLib {
             }
         }
     }
+
+    [Serializable]
+    internal class DisList<T> : List<T>, IDisposable where T : IDisposable {
+        public DisList() {
+        }
+
+        public DisList(IEnumerable<T> col) : base(col) {
+        }
+
+        public void Dispose() {
+            foreach(T t in this) {
+                try {
+                    t.Dispose();
+                }
+                catch {
+                }
+            }
+            Clear();
+        }
+    }
 }
 

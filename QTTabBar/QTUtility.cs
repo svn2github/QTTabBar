@@ -64,18 +64,13 @@ namespace QTTabBarLib {
         
         // TODO: almost all of these need to be either sync'd or removed.
         // TODO: we should store actual TabItems, not just strings.
-        internal static UniqueList<string> ClosedTabHistoryList = new UniqueList<string>(16);
-        internal static string CreateWindowTMPGroup = string.Empty;
-        internal static string CreateWindowTMPPath = string.Empty;
         internal static Dictionary<string, string> DisplayNameCacheDic = new Dictionary<string, string>();
-        internal static UniqueList<string> ExecutedPathsList = new UniqueList<string>(16);
         internal static bool fExplorerPrevented;
         internal static bool fRestoreFolderTree;
         internal static bool fSingleClick;
         internal static int iIconUnderLineVal;
         internal static ImageList ImageListGlobal;
         internal static Dictionary<string, byte[]> ITEMIDLIST_Dic_Session = new Dictionary<string, byte[]>();
-        internal static List<string> LockedTabsToRestoreList = new List<string>();
         internal static List<string> NoCapturePathsList = new List<string>();
         internal static string[] ResMain;
         internal static string[] ResMisc;
@@ -83,9 +78,6 @@ namespace QTTabBarLib {
         internal static SolidBrush sbAlternate;
         internal static Font StartUpTabFont;
         internal static Dictionary<string, string[]> TextResourcesDic;
-        internal static List<byte[]> TMPIDLList = new List<byte[]>();
-        internal static List<string> TMPPathList = new List<string>();
-        internal static byte[] TMPTargetIDL;
         internal static byte WindowAlpha = 0xff;
 
         static QTUtility() {
@@ -125,14 +117,14 @@ namespace QTTabBarLib {
                             if(key2 != null) {
                                 List<string> collection = key2.GetValueNames()
                                         .Select(str4 => (string)key2.GetValue(str4)).ToList();
-                                ClosedTabHistoryList = new UniqueList<string>(collection, Config.Misc.TabHistoryCount);
+                                StaticReg.ClosedTabHistoryList = new UniqueList<string>(collection, Config.Misc.TabHistoryCount);
                             }
                         }
                         using(RegistryKey key3 = key.CreateSubKey("RecentFiles")) {
                             if(key3 != null) {
                                 List<string> list2 = key3.GetValueNames().Select(str5 =>
                                         (string)key3.GetValue(str5)).ToList();
-                                ExecutedPathsList = new UniqueList<string>(list2, Config.Misc.FileHistoryCount);
+                                StaticReg.ExecutedPathsList = new UniqueList<string>(list2, Config.Misc.FileHistoryCount);
                             }
                         }
                         RefreshLockedTabsList();
@@ -170,6 +162,7 @@ namespace QTTabBarLib {
         }
 
         private readonly static string[] strCompressedExt = new string[] { ".zip", ".lzh", ".cab" };
+
         public static bool ExtIsCompressed(string ext) {
             return strCompressedExt.Contains(ext);
         }
@@ -541,10 +534,10 @@ namespace QTTabBarLib {
                 if(key != null) {
                     string[] collection = QTUtility2.ReadRegBinary<string>("TabsLocked", key);
                     if((collection != null) && (collection.Length != 0)) {
-                        LockedTabsToRestoreList = new List<string>(collection);
+                        StaticReg.LockedTabsToRestoreList.Assign(collection);
                     }
                     else {
-                        LockedTabsToRestoreList.Clear();
+                        StaticReg.LockedTabsToRestoreList.Clear();
                     }
                 }
             }
@@ -639,8 +632,8 @@ namespace QTTabBarLib {
                         foreach(string str in key.GetValueNames()) {
                             key.DeleteValue(str, false);
                         }
-                        for(int i = 0; i < ExecutedPathsList.Count; i++) {
-                            key.SetValue(i.ToString(), ExecutedPathsList[i]);
+                        for(int i = 0; i < StaticReg.ExecutedPathsList.Count; i++) {
+                            key.SetValue(i.ToString(), StaticReg.ExecutedPathsList[i]);
                         }
                     }
                 }
@@ -654,8 +647,8 @@ namespace QTTabBarLib {
                         foreach(string str in key.GetValueNames()) {
                             key.DeleteValue(str, false);
                         }
-                        for(int i = 0; i < ClosedTabHistoryList.Count; i++) {
-                            key.SetValue(i.ToString(), ClosedTabHistoryList[i]);
+                        for(int i = 0; i < StaticReg.ClosedTabHistoryList.Count; i++) {
+                            key.SetValue(i.ToString(), StaticReg.ClosedTabHistoryList[i]);
                         }
                     }
                 }

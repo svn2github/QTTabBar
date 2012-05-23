@@ -207,7 +207,7 @@ namespace QTTabBarLib {
         protected override void OnKeyDown(KeyEventArgs e) {
             base.OnKeyDown(e);
             if(e.KeyData == (Keys.Control | Keys.C)) {
-                QTTabBarClass.SetStringClipboard(Text + Environment.NewLine + Environment.NewLine + labelMessage.Text);
+                QTUtility2.SetStringClipboard(Text + Environment.NewLine + Environment.NewLine + labelMessage.Text);
             }
         }
 

@@ -20,6 +20,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Media;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -279,7 +280,7 @@ namespace QTTabBarLib {
                     }
 
                     if(PInvoke.ShellExecuteEx(ref sei)) {
-                        QTUtility.ExecutedPathsList.Add(path);
+                        StaticReg.ExecutedPathsList.Add(path);
                         return;
                     }
                 }
@@ -315,6 +316,49 @@ namespace QTTabBarLib {
             appList.AddRange(paths.Select(path => 
                     new UserApp(Path.GetFileName(path), path, "", "", Keys.None)));
             SaveApps();
+        }
+
+        public static void HandleReorder(IEnumerable<ToolStripItem> items) {
+            int dummy;
+            List<UserApp> reordered = new List<UserApp>();
+            ListFromNestedStructure(reordered, out dummy,
+                    items.OfType<QMenuItem>(), // todo: separators
+                    item => item.MenuItemArguments.App,
+                    item => item.MenuItemArguments.App.IsFolder
+                        ? item.DropDown.Items.Cast<QMenuItem>()
+                        : null);
+            
+            // Find the index of the first item in the level that was reordered.
+            Stack<int> startIdx = new Stack<int>();
+            Stack<int> levelChildren = new Stack<int>();
+            startIdx.Push(0);
+            int children = int.MaxValue;
+            int i = 0;
+            foreach(UserApp app in appList) {
+                i++;
+                while(children-- == 0) {
+                    children = levelChildren.Pop();
+                    startIdx.Pop();
+                }
+                if(app == reordered[0]) break;
+                if(app.IsFolder) {
+                    levelChildren.Push(children);
+                    startIdx.Push(i);
+                    children = app.ChildrenCount;
+                }
+            }
+
+            i = startIdx.Pop();
+            if(i + reordered.Count > appList.Count) {
+                // This should never happen
+                SystemSounds.Hand.Play();
+            }
+            else {
+                for(int j = 0; j < reordered.Count; j++) {
+                    appList[i + j] = reordered[j];
+                }
+                SaveApps();
+            }
         }
     }
 }

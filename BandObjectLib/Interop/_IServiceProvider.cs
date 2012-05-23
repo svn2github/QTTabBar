@@ -22,6 +22,9 @@ using System.Security;
 namespace BandObjectLib {
     [ComImport, InterfaceType(ComInterfaceType.InterfaceIsIUnknown), Guid("6d5140c1-7436-11ce-8034-00aa006009fa"), SuppressUnmanagedCodeSecurity]
     public interface _IServiceProvider {
-        void QueryService(ref Guid guid, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out object Obj);
+        void QueryService(
+                [In, MarshalAs(UnmanagedType.LPStruct)] Guid guid,
+                [In, MarshalAs(UnmanagedType.LPStruct)] Guid riid,
+                [MarshalAs(UnmanagedType.Interface)] out object Obj);
     }
 }

@@ -197,6 +197,7 @@ namespace QTTabBarLib {
         public static _Keys Keys        { get { return ConfigManager.LoadedConfig.keys; } }
         public static _Plugin Plugin    { get { return ConfigManager.LoadedConfig.plugin; } }
         public static _Lang Lang        { get { return ConfigManager.LoadedConfig.lang; } }
+        public static _Desktop Desktop  { get { return ConfigManager.LoadedConfig.desktop; } }
 
         public _Window window   { get; set; }
         public _Tabs tabs       { get; set; }
@@ -209,6 +210,7 @@ namespace QTTabBarLib {
         public _Keys keys       { get; set; }
         public _Plugin plugin   { get; set; }
         public _Lang lang       { get; set; }
+        public _Desktop desktop { get; set; }
 
         public Config() {
             window = new _Window();
@@ -222,6 +224,7 @@ namespace QTTabBarLib {
             keys = new _Keys();
             plugin = new _Plugin();
             lang = new _Lang();
+            desktop = new _Desktop();
         }
 
         [Serializable]
@@ -565,6 +568,51 @@ namespace QTTabBarLib {
                 PluginLangFiles = new string[0];
             }
         }
+
+        [Serializable]
+        public class _Desktop {
+            public int FirstItem                 { get; set; }
+            public int SecondItem                { get; set; }
+            public int ThirdItem                 { get; set; }
+            public int FourthItem                { get; set; }
+            public bool GroupExpanded            { get; set; }
+            public bool RecentTabExpanded        { get; set; }
+            public bool ApplicationExpanded      { get; set; }
+            public bool RecentFileExpanded       { get; set; }
+            public bool TaskBarDblClickEnabled   { get; set; }
+            public bool DesktopDblClickEnabled   { get; set; }
+            public bool LockMenu                 { get; set; }
+            public bool TitleBackground          { get; set; }
+            public bool IncludeGroup             { get; set; }
+            public bool IncludeRecentTab         { get; set; }
+            public bool IncludeApplication       { get; set; }
+            public bool IncludeRecentFile        { get; set; }
+            public bool OneClickMenu             { get; set; }
+            public bool EnableAppShortcuts       { get; set; }
+            public int Width                     { get; set; }
+            
+            public _Desktop() {
+                FirstItem = 0;
+                SecondItem = 1;
+                ThirdItem = 2;
+                FourthItem = 3;
+                GroupExpanded = false;
+                RecentTabExpanded = false;
+                ApplicationExpanded = false;
+                RecentFileExpanded = false;
+                TaskBarDblClickEnabled = true;
+                DesktopDblClickEnabled = true;
+                LockMenu = false;
+                TitleBackground = false;
+                IncludeApplication = true;
+                IncludeRecentTab = true;
+                IncludeApplication = true;
+                IncludeRecentFile = true;
+                OneClickMenu = false;
+                EnableAppShortcuts = true;
+                Width = 80;
+            }
+        }
     }
 
     public static class ConfigManager {
@@ -581,8 +629,8 @@ namespace QTTabBarLib {
                     ? QTUtility.ReadLanguageFile(Config.Lang.LangFile)
                     : null;
             QTUtility.ValidateTextResources();
-            QTUtility.ClosedTabHistoryList.MaxCapacity = Config.Misc.TabHistoryCount;
-            QTUtility.ExecutedPathsList.MaxCapacity = Config.Misc.FileHistoryCount;
+            StaticReg.ClosedTabHistoryList.MaxCapacity = Config.Misc.TabHistoryCount;
+            StaticReg.ExecutedPathsList.MaxCapacity = Config.Misc.FileHistoryCount;
             DropDownMenuBase.InitializeMenuRenderer();
             ContextMenuStripEx.InitializeMenuRenderer();
             PluginManager.RefreshPlugins();
@@ -689,11 +737,13 @@ namespace QTTabBarLib {
             if(QTUtility.IsXP) Config.Tweaks.BackspaceUpLevel = true;
             if(!QTUtility.IsWin7) Config.Tweaks.ForceSysListView = true;
         }
-        public static void WriteConfig() {
+
+        public static void WriteConfig(bool DesktopOnly = false) {
             const string RegPath = RegConst.Root + RegConst.Config;
 
-            // Properties from all categories
-            foreach(PropertyInfo category in typeof(Config).GetProperties().Where(c => c.CanWrite)) {
+            // Properties from all categories, or only the Desktop.
+            var categories = typeof(Config).GetProperties().Where(c => DesktopOnly ? c.Name == "desktop" : c.CanWrite);
+            foreach(PropertyInfo category in categories) {
                 Type cls = category.PropertyType;
                 object val = category.GetValue(LoadedConfig, null);
                 using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegPath + cls.Name.Substring(1))) {

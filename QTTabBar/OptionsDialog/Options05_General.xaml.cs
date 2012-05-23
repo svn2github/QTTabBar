@@ -45,7 +45,7 @@ namespace QTTabBarLib {
                     QTUtility.TextResourcesDic["OptionsDialog"][3],
                     MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
             if(resp == MessageBoxResult.Cancel) return;
-            QTUtility.ExecutedPathsList.Clear();
+            StaticReg.ExecutedPathsList.Clear();
             btnRecentFilesClear.GetBindingExpression(IsEnabledProperty).UpdateTarget();
         }
 
@@ -56,7 +56,7 @@ namespace QTTabBarLib {
                     QTUtility.TextResourcesDic["OptionsDialog"][3],
                     MessageBoxButton.OKCancel, MessageBoxImage.Question, MessageBoxResult.Cancel);
             if(resp == MessageBoxResult.Cancel) return;
-            QTUtility.ClosedTabHistoryList.Clear();
+            StaticReg.ClosedTabHistoryList.Clear();
             btnRecentTabsClear.GetBindingExpression(IsEnabledProperty).UpdateTarget();
         }
 
@@ -85,8 +85,8 @@ namespace QTTabBarLib {
         // ReSharper disable UnusedAutoPropertyAccessor.Local
 
         private class RecentButtonBinding {
-            public bool HaveRecentTabs { get { return QTUtility.ClosedTabHistoryList.Count != 0; } }
-            public bool HaveRecentFiles { get { return QTUtility.ExecutedPathsList.Count != 0; } }
+            public bool HaveRecentTabs { get { return StaticReg.ClosedTabHistoryList.Count != 0; } }
+            public bool HaveRecentFiles { get { return StaticReg.ExecutedPathsList.Count != 0; } }
         }
 
         #endregion

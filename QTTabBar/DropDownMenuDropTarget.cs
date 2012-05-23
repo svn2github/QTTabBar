@@ -155,7 +155,7 @@ namespace QTTabBarLib {
                             }
                         }
                         if(!string.IsNullOrEmpty(path)) {
-                            QTTabBarClass.SetStringClipboard(path);
+                            QTUtility2.SetStringClipboard(path);
                             fContainsFileDropList = false;
                             itemKeyInsertionMarkPrev = null;
                             Invalidate();
@@ -181,7 +181,7 @@ namespace QTTabBarLib {
                     }
                 }
                 if(str.Length > 0) {
-                    QTTabBarClass.SetStringClipboard(str);
+                    QTUtility2.SetStringClipboard(str);
                     fContainsFileDropList = false;
                     itemKeyInsertionMarkPrev = null;
                     Invalidate();

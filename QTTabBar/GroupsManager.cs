@@ -127,8 +127,8 @@ namespace QTTabBarLib {
             return true;
         }
 
-        public static void HandleReorder(ToolStripItemCollection itemsList) {
-            Groups = itemsList.Cast<ToolStripItem>().Select(item => groupDict[item.Text]);
+        public static void HandleReorder(IEnumerable<ToolStripItem> items) {
+            Groups = items.Select(item => groupDict[item.Text]);
             SaveGroups();
         }
     }

@@ -290,7 +290,7 @@ namespace QTTabBarLib {
                         ddmrRecentlyClosed.Closed += dropDownButtons_DropDown_Closed;
                     }
                     button.DropDown = ddmrRecentlyClosed;
-                    button.Enabled = QTUtility.ClosedTabHistoryList.Count > 0;
+                    button.Enabled = StaticReg.ClosedTabHistoryList.Count > 0;
                     break;
 
                 case 5:
@@ -551,7 +551,7 @@ namespace QTTabBarLib {
                     e.HRESULT = shellContextMenu.Open(wrapper, e.IsKey ? e.Point : MousePosition, ((DropDownMenuReorderable)sender).Handle, fCanRemove);
                 }
                 if(fCanRemove && (e.HRESULT == 0xffff)) {
-                    QTUtility.ClosedTabHistoryList.Remove(clickedItem.Path);
+                    StaticReg.ClosedTabHistoryList.Remove(clickedItem.Path);
                     clickedItem.Dispose();
                 }
             }
@@ -638,17 +638,12 @@ namespace QTTabBarLib {
             DropDownMenuReorderable reorderable = (DropDownMenuReorderable)sender;
             switch(((int)reorderable.OwnerItem.Tag)) {
                 case 3:
-                    GroupsManager.HandleReorder(reorderable.Items);
+                    GroupsManager.HandleReorder(reorderable.Items.Cast<ToolStripItem>());
                     break;
 
                 case 5:
-                    AppsManager.SetUserAppsFromNestedStructure(
-                            reorderable.Items.Cast<QMenuItem>(),
-                            item => item.MenuItemArguments.App,
-                            item => item.MenuItemArguments.App.IsFolder
-                                ? item.DropDown.Items.Cast<QMenuItem>()
-                                : null); 
-                     break;
+                    AppsManager.HandleReorder(reorderable.Items.Cast<ToolStripItem>());
+                    break;
             }
             QTTabBarClass.SyncTaskBarMenu();
         }
@@ -1505,7 +1500,7 @@ namespace QTTabBarLib {
                         item.Enabled = AppsManager.UserApps.Any();
                         break;
                     case BII_RECENTTAB:
-                        item.Enabled = QTUtility.ClosedTabHistoryList.Count > 0;
+                        item.Enabled = StaticReg.ClosedTabHistoryList.Count > 0;
                         break;
                     // todo: recent files
                     case BII_TOPMOST:

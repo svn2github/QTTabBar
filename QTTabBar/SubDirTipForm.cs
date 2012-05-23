@@ -341,6 +341,7 @@ namespace QTTabBarLib {
             return list;
         }
 
+        // TODO: clean
         private List<QMenuItem> CreateMenuFromIDL(IDLWrapper idlw, byte[] idlChild) {
             List<QMenuItem> list = new List<QMenuItem>();
             List<QMenuItem> collection = new List<QMenuItem>();
@@ -450,53 +451,47 @@ namespace QTTabBarLib {
             if(lst == null) {
                 lst = new List<QMenuItem>();
             }
-            if(idlw.Available) {
-                IntPtr ptr;
-                if(!TryGetParentIDL(idlw.PIDL, out ptr)) {
+            using(IDLWrapper wrapper = idlw.GetParent()) {
+                if(!wrapper.Available || !wrapper.HasPath) {
                     return lst;
                 }
-                using(IDLWrapper wrapper = new IDLWrapper(ptr)) {
-                    if(!wrapper.HasPath) {
-                        return lst;
-                    }
-                    bool flag = PInvoke.ILGetSize(wrapper.PIDL) == 2;
-                    QMenuItem item = new QMenuItem(ShellMethods.GetDisplayName(wrapper.PIDL, true), MenuTarget.Folder, MenuGenre.SubDirTip);
-                    if(!QTUtility.ImageListGlobal.Images.ContainsKey(wrapper.Path)) {
-                        QTUtility.ImageListGlobal.Images.Add(wrapper.Path, QTUtility.GetIcon(wrapper.PIDL));
-                    }
-                    item.ImageKey = item.Path = item.TargetPath = wrapper.Path;
-                    item.IDLDataChild = idlw.IDL;
-                    item.PathChild = idlw.Path;
-                    item.MouseMove += tsmi_Folder_MouseMove;
-                    DropDownMenuDropTarget target = new DropDownMenuDropTarget(null, true, !fDesktop, false, hwndDialogParent);
-                    target.SuspendLayout();
-                    target.CheckOnEdgeClick = true;
-                    target.MessageParent = hwndMessageReflect;
-                    target.Items.Add(new ToolStripMenuItem("dummy"));
-                    target.ImageList = QTUtility.ImageListGlobal;
-                    target.SpaceKeyExecute = true;
-                    target.MouseLeave += ddmr_MouseLeave;
-                    target.ItemRightClicked += ddmr_ItemRightClicked;
-                    target.Opened += ddmr_Opened;
-                    target.MenuDragEnter += ddmr_MenuDragEnter;
-                    item.DropDown = target;
-                    item.DropDownOpening += tsmi_DropDownOpening;
-                    item.DropDownItemClicked += ddmr_ItemClicked;
-                    if(wrapper.IsFileSystem) {
-                        item.MouseDown += tsmi_MouseDown;
-                        item.MouseUp += tsmi_MouseUp;
-                        target.MouseDragMove += ddmr_MouseDragMove;
-                        target.MouseUpBeforeDrop += ddmr_MouseUpBeforeDrop;
-                        target.KeyUp += ddmr_KeyUp;
-                        target.PreviewKeyDown += ddmr_PreviewKeyDown;
-                        target.MouseScroll += ddmr_MouseScroll;
-                        target.Path = wrapper.Path;
-                    }
-                    target.ResumeLayout();
-                    lst.Add(item);
-                    if(!flag) {
-                        CreateParentMenu(wrapper, lst);
-                    }
+                bool isDesktop = PInvoke.ILGetSize(wrapper.PIDL) == 2;
+                QMenuItem item = new QMenuItem(ShellMethods.GetDisplayName(wrapper.PIDL, true), MenuTarget.Folder, MenuGenre.SubDirTip);
+                if(!QTUtility.ImageListGlobal.Images.ContainsKey(wrapper.Path)) {
+                    QTUtility.ImageListGlobal.Images.Add(wrapper.Path, QTUtility.GetIcon(wrapper.PIDL));
+                }
+                item.ImageKey = item.Path = item.TargetPath = wrapper.Path;
+                item.IDLDataChild = idlw.IDL;
+                item.PathChild = idlw.Path;
+                item.MouseMove += tsmi_Folder_MouseMove;
+                DropDownMenuDropTarget target = new DropDownMenuDropTarget(null, true, !fDesktop, false, hwndDialogParent);
+                target.SuspendLayout();
+                target.CheckOnEdgeClick = true;
+                target.MessageParent = hwndMessageReflect;
+                target.Items.Add(new ToolStripMenuItem("dummy"));
+                target.ImageList = QTUtility.ImageListGlobal;
+                target.SpaceKeyExecute = true;
+                target.MouseLeave += ddmr_MouseLeave;
+                target.ItemRightClicked += ddmr_ItemRightClicked;
+                target.Opened += ddmr_Opened;
+                target.MenuDragEnter += ddmr_MenuDragEnter;
+                item.DropDown = target;
+                item.DropDownOpening += tsmi_DropDownOpening;
+                item.DropDownItemClicked += ddmr_ItemClicked;
+                if(wrapper.IsFileSystem) {
+                    item.MouseDown += tsmi_MouseDown;
+                    item.MouseUp += tsmi_MouseUp;
+                    target.MouseDragMove += ddmr_MouseDragMove;
+                    target.MouseUpBeforeDrop += ddmr_MouseUpBeforeDrop;
+                    target.KeyUp += ddmr_KeyUp;
+                    target.PreviewKeyDown += ddmr_PreviewKeyDown;
+                    target.MouseScroll += ddmr_MouseScroll;
+                    target.Path = wrapper.Path;
+                }
+                target.ResumeLayout();
+                lst.Add(item);
+                if(!isDesktop) {
+                    CreateParentMenu(wrapper, lst);
                 }
             }
             return lst;
@@ -1048,29 +1043,6 @@ namespace QTTabBarLib {
             catch(Exception exception) {
                 QTUtility2.MakeErrorLog(exception);
             }
-        }
-
-        private static bool TryGetParentIDL(IntPtr pIDL, out IntPtr pIDLParent) {
-            pIDLParent = IntPtr.Zero;
-            if(!(pIDL != IntPtr.Zero)) {
-                return false;
-            }
-            IntPtr pidl = PInvoke.ILFindLastID(pIDL);
-            uint num = PInvoke.ILGetSize(pIDL);
-            uint num2 = PInvoke.ILGetSize(pidl);
-            if(num != num2) {
-                uint num3 = (num - num2) + 2;
-                byte[] iDLData = ShellMethods.GetIDLData(pIDL);
-                byte[] buffer2 = new byte[num3];
-                pIDLParent = Marshal.AllocCoTaskMem((int)num3);
-                Marshal.Copy(buffer2, 0, pIDLParent, (int)num3);
-                Marshal.Copy(iDLData, 0, pIDLParent, ((int)num3) - 2);
-                return true;
-            }
-            pIDLParent = Marshal.AllocCoTaskMem(2);
-            byte[] source = new byte[2];
-            Marshal.Copy(source, 0, pIDLParent, 2);
-            return true;
         }
 
         private void tsmi_DropDownOpening(object sender, EventArgs e) {

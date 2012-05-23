@@ -179,6 +179,10 @@ namespace QTTabBarLib {
             return !(idl1 == idl2);
         }
 
+        public IDLWrapper Clone() {
+            return new IDLWrapper(Available ? PInvoke.ILClone(PIDL) : IntPtr.Zero);
+        }
+
         public bool Equals(IDLWrapper other) {
             return this == other;
         }
@@ -275,11 +279,59 @@ namespace QTTabBarLib {
             return false;
         }
 
+        public IDLWrapper GetParent() {
+            // According to Quizo, ILRemoveLastID doesn't work.  So, we're doing it by hand.
+
+            // ITEMIDLIST
+            // |-|------------|-|---------|-|----------|-|--------------|-|
+            // |2|            |2|         |2|          |2|              |2|			old
+            // |-|------------|-|---------|-|----------|-|--------------|-|
+            //      SHITEMID                                             00
+            // |-|------------|-|---------|-|----------|-|
+            // |2|            |2|         |2|          |2|							new
+            // |-|------------|-|---------|-|----------|-|
+            //                                          00
+            //
+            // typedef struct _SHITEMID {
+            //     USHORT cb;				
+            //     BYTE abID[1];
+            // } SHITEMID;
+            //
+            // 2 bytes cb is the size of SHITEMID structure in bytes, including cb itself. 
+            // ITEMIDLIST is ended with 2bytes 0.
+
+            if(!Available) {
+                return new IDLWrapper();
+            }
+            uint size = PInvoke.ILGetSize(PIDL);
+            if(size == 2) {
+                // desktop
+                return Clone();
+            }
+
+            IntPtr pIDLLast = PInvoke.ILFindLastID(PIDL);
+            uint sizeLast = PInvoke.ILGetSize(pIDLLast);
+            int sizeNew = (int)(size - sizeLast + 2);
+
+            IntPtr pidlNew = Marshal.AllocCoTaskMem(sizeNew);
+            byte[] buffer = new byte[sizeNew];
+            Marshal.Copy(PIDL, buffer, 0, sizeNew - 2);
+            Marshal.Copy(buffer, 0, pidlNew, sizeNew);
+
+            return new IDLWrapper(pidlNew);
+        }
+
         public static bool PathIsNetwork(string path) {
             if(!path.StartsWith(@"\\") && !path.StartsWith("http://")) {
                 return path.StartsWith("ftp://");
             }
             return true;
+        }
+
+        public static byte[] PathToIDL(string path) {
+            using(IDLWrapper idlw = new IDLWrapper(path)) {
+                return idlw.IDL;
+            }
         }
 
         private static void ReadCache() {
