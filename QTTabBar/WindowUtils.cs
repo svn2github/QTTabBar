@@ -28,9 +28,9 @@ namespace QTTabBarLib {
             PInvoke.SetForegroundWindow(hwndExplr);
         }
 
-        public static void CloseExplorer(IntPtr hwndExplr, int nCode, bool async = false) {
+        public static void CloseExplorer(IntPtr hwndExplr, int nCode, bool doAsync = false) {
             if(QTUtility.IsXP && nCode == 0) nCode = 3;
-            if(QTUtility.IsXP || async) {
+            if(QTUtility.IsXP || doAsync) {
                 PInvoke.PostMessage(hwndExplr, WM.CLOSE, IntPtr.Zero, (IntPtr)nCode);
             }
             else {

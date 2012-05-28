@@ -75,10 +75,10 @@ namespace QTTabBarLib {
             void SelectTabOnOtherTabBar(IntPtr tabBarHandle, int index);
 
             [OperationContract]
-            bool ExecuteOnMainProcess(byte[] encodedAction, bool async);
+            bool ExecuteOnMainProcess(byte[] encodedAction, bool doAsync);
 
             [OperationContract]
-            void ExecuteOnServerProcess(byte[] encodedAction, bool async);
+            void ExecuteOnServerProcess(byte[] encodedAction, bool doAsync);
 
             [OperationContract]
             object GetFromServerProcess(byte[] encodedAction);
@@ -135,7 +135,7 @@ namespace QTTabBarLib {
                 }
             }
 
-            public bool ExecuteOnMainProcess(byte[] encodedAction, bool async) {
+            public bool ExecuteOnMainProcess(byte[] encodedAction, bool doAsync) {
                 CheckConnections();
                 if(IsMainProcess()) {
                     return true;
@@ -144,7 +144,7 @@ namespace QTTabBarLib {
                     return false;
                 }
                 ICommClient callback = sdInstances.Peek();
-                if(async) {
+                if(doAsync) {
                     AsyncHelper.BeginInvoke(new Action(() => {
                         try {
                             if(!IsDead(callback)) {
@@ -161,9 +161,9 @@ namespace QTTabBarLib {
                 return false;
             }
 
-            public void ExecuteOnServerProcess(byte[] encodedAction, bool async) {
+            public void ExecuteOnServerProcess(byte[] encodedAction, bool doAsync) {
                 Delegate action = ByteToDel(encodedAction);
-                if(async) {
+                if(doAsync) {
                     AsyncHelper.BeginInvoke(action);
                 }
                 else {
@@ -369,9 +369,9 @@ namespace QTTabBarLib {
             }
         }
 
-        private static void ExecuteOnMainProcess(Action action, bool async) {
+        private static void ExecuteOnMainProcess(Action action, bool doAsync) {
             ICommService service = GetChannel();
-            if(service == null || service.ExecuteOnMainProcess(DelToByte(action), async)) {
+            if(service == null || service.ExecuteOnMainProcess(DelToByte(action), doAsync)) {
                 action();
             }
         }
@@ -391,13 +391,13 @@ namespace QTTabBarLib {
             ExecuteOnMainProcess(() => LocalInvokeMain(action, true), true);
         }
 
-        public static void LocalInvokeMain(Action<QTTabBarClass> action, bool async = false) {
+        public static void LocalInvokeMain(Action<QTTabBarClass> action, bool doAsync = false) {
             QTTabBarClass instance;
             using(new Keychain(rwLockTabBar, false)) {
                 instance = sdTabHandles.Count == 0 ? null : sdTabHandles.Peek();
             }
             if(instance == null) return;
-            if(async) {
+            if(doAsync) {
                 instance.BeginInvoke(action, instance);    
             }
             else {
@@ -471,7 +471,7 @@ namespace QTTabBarLib {
             return false;
         }
 
-        public static void ExecuteOnServerProcess(Action action, bool async) {
+        public static void ExecuteOnServerProcess(Action action, bool doAsync) {
             ICommService service;
             if(isServer || (service = GetChannel()) == null) {
                 try {
@@ -482,7 +482,7 @@ namespace QTTabBarLib {
                 }
             }
             else {
-                service.ExecuteOnServerProcess(DelToByte(action), async);                
+                service.ExecuteOnServerProcess(DelToByte(action), doAsync);                
             }
         }
 
