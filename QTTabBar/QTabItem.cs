@@ -360,6 +360,10 @@ namespace QTTabBarLib {
             return data;
         }
 
+        public void NavigatedTo(Address address, int hash, bool autoNav) {
+            NavigatedTo(address.Path, address.ITEMIDLIST, hash, autoNav);
+        }
+
         public void NavigatedTo(string path, byte[] idl, int hash, bool autoNav) {
             if((idl == null) || (idl.Length == 0)) {
                 idl = ShellMethods.GetIDLData(path);
