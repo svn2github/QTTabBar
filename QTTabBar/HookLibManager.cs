@@ -107,7 +107,7 @@ namespace QTTabBarLib {
             MessageForm.Show(IntPtr.Zero,
                     "Error:  Unable to load QTTabBar hook library.  " +
                             "Some features might not be functional.  " +
-                                    "You may need to reinstall the applicaiton.",
+                                    "You may need to reinstall the application.",
                     "Error", MessageBoxIcon.Hand, 30000, false, true);
         }
 
@@ -166,7 +166,7 @@ namespace QTTabBarLib {
                     MessageForm.Show(IntPtr.Zero,
                             "Error:  Unable to initialize QTTabBar hook library.  " +
                             "Some features might not be functional.  " +
-                            "You may need to reinstall the applicaiton.",
+                            "You may need to reinstall the application.",
                             "Error", MessageBoxIcon.Hand, 30000, false, true);
                 }
                 else {
