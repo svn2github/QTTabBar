@@ -29,6 +29,9 @@ namespace QTPlugin {
         public Address(IntPtr pidl, string path = null) :
             this(PInvoke.GetIDListData(pidl), path) { }
 
+        public Address(string path) : 
+            this(null, path) { }
+
         public Address(byte[] idl = null, string path = null) {
             ITEMIDLIST = idl;
             Path = path;
