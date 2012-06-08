@@ -1797,7 +1797,7 @@ namespace QTTabBarLib {
             if(qmi.Genre == MenuGenre.Group) {
                 OpenGroup(qmi.Text);
             }
-            else if(qmi.Genre == MenuGenre.RecentFile) {
+            else if(qmi.Genre == MenuGenre.History) {
                 using(IDLWrapper idlw = new IDLWrapper(qmi.IDLData)) {
                     OpenFolder(idlw);    
                 }
