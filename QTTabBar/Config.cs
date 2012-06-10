@@ -740,41 +740,46 @@ namespace QTTabBarLib {
 
         public static void WriteConfig(bool DesktopOnly = false) {
             const string RegPath = RegConst.Root + RegConst.Config;
+            
+            //Returns details of setting properties from all categories, or only Desktop category
+            var settings =
+                from categoryProperty in typeof(Config).GetProperties()
+                where DesktopOnly ? categoryProperty.Name == "desktop" : categoryProperty.CanWrite
+                let categoryType = categoryProperty.PropertyType
+                let category=categoryProperty.GetValue(LoadedConfig,null)
+                from settingProperty in categoryType .GetProperties()
+                select new {
+                    name = settingProperty.Name,
+                    type = settingProperty.PropertyType,
+                    value = settingProperty.GetValue(category, null),
+                    keyPath = RegPath + categoryType.Name.Substring(1)
+                };
 
-            // Properties from all categories, or only the Desktop.
-            var categories = typeof(Config).GetProperties().Where(c => DesktopOnly ? c.Name == "desktop" : c.CanWrite);
-            foreach(PropertyInfo category in categories) {
-                Type cls = category.PropertyType;
-                object val = category.GetValue(LoadedConfig, null);
-                using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegPath + cls.Name.Substring(1))) {
-                    foreach(var prop in cls.GetProperties()) {
-                        Type t = prop.PropertyType;
-                        if(t == typeof(bool)) {
-                            key.SetValue(prop.Name, (bool)prop.GetValue(val, null) ? 1 : 0);
+            foreach(var setting in settings) {
+                using (var key=Registry.CurrentUser.CreateSubKey(setting.keyPath)) {
+                    Type t = setting.type;
+                    object value = setting.value;
+
+                    if (t==typeof(bool)) {
+                        value=(bool)value ? 1 : 0;
+                    } else if (t != typeof(int) && t != typeof(string) && !t.IsEnum) {
+                        if (t==typeof(Font)) {
+                            value = XmlSerializableFont.FromFont((Font)value);
+                            t = typeof(XmlSerializableFont);
                         }
-                        else if(t == typeof(int) || t == typeof(string) || t.IsEnum) {
-                            key.SetValue(prop.Name, prop.GetValue(val, null));
-                        }
-                        else {
-                            object obj = prop.GetValue(val, null);
-                            if(t == typeof(Font)) {
-                                obj = XmlSerializableFont.FromFont((Font)obj);
-                                t = typeof(XmlSerializableFont);
+                        var ser = new DataContractJsonSerializer(t);
+                        using (var stream=new MemoryStream()) {
+                            try {
+                                ser.WriteObject(stream,value);
+                            } catch (Exception e) {
+                                QTUtility2.MakeErrorLog(e);
                             }
-                            DataContractJsonSerializer ser = new DataContractJsonSerializer(t);
-                            using(MemoryStream stream = new MemoryStream()) {
-                                try {
-                                    ser.WriteObject(stream, obj);
-                                }
-                                catch(Exception e) {
-                                    QTUtility2.MakeErrorLog(e);
-                                }
-                                stream.Position = 0;
-                                StreamReader reader = new StreamReader(stream);
-                                key.SetValue(prop.Name, reader.ReadToEnd());                                
-                            }
+                            stream.Position = 0;
+                            value = new StreamReader(stream).ReadToEnd();
                         }
                     }
+
+                    key.SetValue(setting.name,value);
                 }
             }
         }
