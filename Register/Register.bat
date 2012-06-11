@@ -10,9 +10,6 @@ IF EXIST QTTabBar.dll (
     )
 )
 cd ..\..\
-IF EXIST Ricciolo.Controls.TreeListView.dll (
-    gacutil /if Ricciolo.Controls.TreeListView.dll
-)
 
 cd ..\QTPluginLib\bin\%1
 IF EXIST QTPluginLib.dll (

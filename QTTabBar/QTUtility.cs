@@ -22,6 +22,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Resources;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
@@ -87,6 +88,17 @@ namespace QTTabBarLib {
             if(processName == "iexplore" || processName == "regasm" || processName == "gacutil") {
                 return;
             }
+
+            // Register a callback for AssemblyResolve in order to load embedded assemblies.
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) => {
+                String resourceName = "QTTabBarLib.Resources." + new AssemblyName(args.Name).Name + ".dll";
+                using(var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)) {
+                    if(stream == null) return null;
+                    byte[] assemblyData = new byte[stream.Length];
+                    stream.Read(assemblyData, 0, assemblyData.Length);
+                    return Assembly.Load(assemblyData);
+                }
+            };
 
             try {
                 // Load the config
