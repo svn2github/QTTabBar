@@ -647,41 +647,52 @@ namespace QTTabBarLib {
         public static void ReadConfig() {
             const string RegPath = RegConst.Root + RegConst.Config;
 
-            // Properties from all categories
-            foreach(PropertyInfo category in typeof(Config).GetProperties().Where(c => c.CanWrite)) {
-                Type cls = category.PropertyType;
-                object val = category.GetValue(LoadedConfig, null);
-                using(RegistryKey key = Registry.CurrentUser.CreateSubKey(RegPath + cls.Name.Substring(1))) {
-                    foreach(PropertyInfo prop in cls.GetProperties()) {
-                        object obj = key.GetValue(prop.Name);
-                        if(obj == null) continue;
-                        Type t = prop.PropertyType;
+            var categories =
+                from categoryProperty in typeof(Config).GetProperties()
+                where categoryProperty.CanWrite
+                let categoryType = categoryProperty.PropertyType
+                let categoryObject = categoryProperty.GetValue(LoadedConfig, null)
+                select new {
+                    keyPath = RegPath + categoryType.Name.Substring(1),
+                    categoryObject, 
+                    settings = (
+                        from settingProperty in categoryType.GetProperties()
+                        select new {
+                            name = settingProperty.Name,
+                            type = settingProperty.PropertyType,
+                            value = settingProperty.GetValue(categoryObject, null),
+                            property = settingProperty
+                        }
+                    )
+                };
+
+            foreach(var category in categories) {
+                using (var key=Registry.CurrentUser.CreateSubKey(category.keyPath)) {
+                    foreach(var setting in category.settings) {
+                        object value = key.GetValue(setting.name);
+                        if (value == null) { continue;}
+
+                        Type t = setting.type;
                         try {
-                            if(t == typeof(bool)) {
-                                prop.SetValue(val, (int)obj != 0, null);
-                            }
-                            else if(t == typeof(int) || t == typeof(string)) {
-                                prop.SetValue(val, obj, null);
-                            }
-                            else if(t.IsEnum) {
-                                prop.SetValue(val, Enum.Parse(t, obj.ToString()), null);
-                            }
-                            else {
-                                using(MemoryStream stream = new MemoryStream(Encoding.UTF8.GetBytes(obj.ToString()))) {
-                                    if(t == typeof(Font)) {
-                                        DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(XmlSerializableFont));
-                                        XmlSerializableFont xsf = ser.ReadObject(stream) as XmlSerializableFont;
-                                        prop.SetValue(val, xsf == null ? null : xsf.ToFont(), null);
-                                    }
-                                    else {
-                                        DataContractJsonSerializer ser = new DataContractJsonSerializer(t);
-                                        prop.SetValue(val, ser.ReadObject(stream), null);
+                            if (t == typeof(bool)) {
+                                value = (int)value != 0;
+                            } else if (t.IsEnum) {
+                                value = Enum.Parse(t, value.ToString());
+                            } else if (t != typeof(int) && t != typeof(string)) {
+                                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(value.ToString()))) {
+                                    if (t == typeof(Font)) {
+                                        var ser = new DataContractJsonSerializer(typeof(XmlSerializableFont));
+                                        var xsf = ser.ReadObject(stream) as XmlSerializableFont;
+                                        value = xsf == null ? null : xsf.ToFont();
+                                    } else {
+                                        var ser = new DataContractJsonSerializer(t);
+                                        value = ser.ReadObject(stream);
                                     }
                                 }
                             }
-                        }
-                        catch {
-                        }
+
+                            setting.property.SetValue(category.categoryObject, value, null);
+                        } catch {}
                     }
                 }
             }
@@ -746,13 +757,13 @@ namespace QTTabBarLib {
                 from categoryProperty in typeof(Config).GetProperties()
                 where DesktopOnly ? categoryProperty.Name == "desktop" : categoryProperty.CanWrite
                 let categoryType = categoryProperty.PropertyType
-                let category=categoryProperty.GetValue(LoadedConfig,null)
+                let categoryObject = categoryProperty.GetValue(LoadedConfig,null)
                 from settingProperty in categoryType .GetProperties()
                 select new {
+                    keyPath = RegPath + categoryType.Name.Substring(1),
                     name = settingProperty.Name,
                     type = settingProperty.PropertyType,
-                    value = settingProperty.GetValue(category, null),
-                    keyPath = RegPath + categoryType.Name.Substring(1)
+                    value = settingProperty.GetValue(categoryObject, null)
                 };
 
             foreach(var setting in settings) {
