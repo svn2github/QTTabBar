@@ -115,7 +115,10 @@ namespace QTTabBarLib {
         private void ListViewItem_Selected(object sender, RoutedEventArgs e) {
             FrameworkElement item = (FrameworkElement)sender;
             FrameworkElement parent = (FrameworkElement)item.Tag;
-            if(parent.IsFocused) item.Focus();
+
+            if (parent != null && parent.IsFocused) {
+                item.Focus();
+            }
         }
 
         #region ---------- Binding Classes ----------
