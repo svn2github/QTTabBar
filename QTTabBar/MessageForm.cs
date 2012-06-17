@@ -134,7 +134,7 @@ namespace QTTabBarLib {
             btnOk.Location = new Point(0x13e, 0x7a);
             btnOk.Size = new Size(0x4b, 0x1c);
             btnOk.TabIndex = 0;
-            btnOk.Text = "OK";
+            btnOk.Text = QTUtility.TextResourcesDic["DialogButtons"][0];
             btnOk.UseVisualStyleBackColor = true;
             btnOk.Click += btnOk_Click;
             btnOk2.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
@@ -142,7 +142,7 @@ namespace QTTabBarLib {
             btnOk2.Location = new Point(0xed, 0x7a);
             btnOk2.Size = new Size(0x4b, 0x1c);
             btnOk2.TabIndex = 0;
-            btnOk2.Text = "OK";
+            btnOk2.Text = QTUtility.TextResourcesDic["DialogButtons"][0];
             btnOk2.UseVisualStyleBackColor = true;
             btnOk2.Visible = false;
             btnOk2.Click += btnOk2_Click;
@@ -151,7 +151,7 @@ namespace QTTabBarLib {
             btnCancel.Location = new Point(0x13e, 0x7a);
             btnCancel.Size = new Size(0x4b, 0x1c);
             btnCancel.TabIndex = 1;
-            btnCancel.Text = "Cancel";
+            btnCancel.Text = QTUtility.TextResourcesDic["DialogButtons"][1];
             btnCancel.UseVisualStyleBackColor = true;
             btnCancel.Visible = false;
             btnCancel.Click += btnOk_Click;

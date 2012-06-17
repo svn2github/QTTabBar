@@ -167,21 +167,20 @@ namespace QTTabBarLib {
         private static void ShowMsg(int code, string strOptional) {
             // show result message.
             // error when code value is less than 0.
-            // todo: localize
 
             string strMsg = String.Empty;
             switch(code) {
                 case -1:
-                    strMsg = "Version file not found (404).";
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][4];
                     break;
                 case -2:
-                    strMsg = "Unknown network error.";
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][5];
                     break;
                 case -3:
-                    strMsg = "Server not found.";
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][6];
                     break;
                 case -4:
-                    strMsg = "Server returned wrong strings.";
+                    strMsg = QTUtility.TextResourcesDic["UpdateCheck"][7];
                     break;
 
                 case 0:

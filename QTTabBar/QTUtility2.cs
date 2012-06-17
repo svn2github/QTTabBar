@@ -24,6 +24,7 @@ using System.Linq;
 using System.Media;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
@@ -503,6 +504,13 @@ namespace QTTabBarLib {
                 sb.Append(t.ToString());
             }
             return sb.ToString();
+        }
+
+        public static string Replace(this string s, Regex regex, string replaceWith) {
+            if (regex!=null) {
+                s = regex.Replace(s, replaceWith);
+            }
+            return s;
         }
 
         public static bool TargetIsInNoCapture(IntPtr pIDL, string path) {

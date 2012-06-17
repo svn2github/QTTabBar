@@ -85,12 +85,15 @@ namespace QTTabBarLib {
                     explorer.ShowBrowserBar(pvaButtonBar, pvarShow, pvarSize);
                 }
                 catch(COMException) {
-                    // TODO: Localize this
-                    MessageForm.Show(IntPtr.Zero,
-                            "Warning:  Could not automatically enable QTTabBar.  " +
-                            "To enable it manually, press and release the Alt key, " +
-                            "then select QTTabBar from the View/Toolbars menu.",
-                            "Could not enable", MessageBoxIcon.Warning, 30000, false, true);
+                    MessageForm.Show(
+                        IntPtr.Zero,
+                        QTUtility.TextResourcesDic["ErrorDialogs"][2],
+                        QTUtility.TextResourcesDic["ErrorDialogs"][3],
+                        MessageBoxIcon.Warning, 
+                        30000, 
+                        false, 
+                        true
+                    );
                 }
                 key.SetValue("ActivationDate", installDateString);
             }

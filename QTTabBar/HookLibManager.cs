@@ -103,12 +103,17 @@ namespace QTTabBarLib {
             if(retcode == 0) return;
             QTUtility2.MakeErrorLog(null, "HookLib Initialize failed: " + retcode);
 
-            // TODO: Localize this
             MessageForm.Show(IntPtr.Zero,
-                    "Error:  Unable to load QTTabBar hook library.  " +
-                            "Some features might not be functional.  " +
-                                    "You may need to reinstall the application.",
-                    "Error", MessageBoxIcon.Hand, 30000, false, true);
+                String.Format(
+                    "{0}: {1} {2}",
+                    QTUtility.TextResourcesDic["ErrorDialogs"][4],
+                    QTUtility.TextResourcesDic["ErrorDialogs"][5],
+                    QTUtility.TextResourcesDic["ErrorDialogs"][7]
+                ),
+                QTUtility.TextResourcesDic["ErrorDialogs"][1],
+                MessageBoxIcon.Hand, 
+                30000, false, true
+            );
         }
 
         private static void HookResult(int hookId, int retcode) {
@@ -162,12 +167,16 @@ namespace QTTabBarLib {
                 if(retcode != 0) {
                     QTUtility2.MakeErrorLog(null, "InitShellBrowserHook failed: " + retcode);
 
-                    // TODO: Localize this
                     MessageForm.Show(IntPtr.Zero,
-                            "Error:  Unable to initialize QTTabBar hook library.  " +
-                            "Some features might not be functional.  " +
-                            "You may need to reinstall the application.",
-                            "Error", MessageBoxIcon.Hand, 30000, false, true);
+                        String.Format(
+                            "{0}: {1} {2}",
+                            QTUtility.TextResourcesDic["ErrorDialogs"][4],
+                            QTUtility.TextResourcesDic["ErrorDialogs"][6],
+                            QTUtility.TextResourcesDic["ErrorDialogs"][7]
+                        ),
+                        QTUtility.TextResourcesDic["ErrorDialogs"][1],
+                        MessageBoxIcon.Hand, 30000, false, true
+                    );
                 }
                 else {
                     fShellBrowserIsHooked = true;

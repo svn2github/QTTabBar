@@ -28,6 +28,8 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Windows.Forms;
 using System.Xml;
+using System.Xml.Linq;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using QTPlugin;
 using QTTabBarLib.Interop;
@@ -513,32 +515,48 @@ namespace QTTabBarLib {
             }
         }
 
+        private static Regex singleLinebreakAtStart = new Regex(@"^(\r\n)?");
         public static Dictionary<string, string[]> ReadLanguageFile(string path) {
-            Dictionary<string, string[]> dictionary = new Dictionary<string, string[]>();
-            const string newValue = "\r\n";
-            const string oldValue = @"\r\n";
+            const string linebreak = "\r\n";
+            const string linebreakLiteral = @"\r\n";
+
+            //We have to remove the first linebreak in the XML element's value, before we can split 
+            //on the linebreak. It's there in the XML, when the XML is created using the editor.
+            //Other linebreaks should be left in place, even if the line is empty, in order to preserve
+            //the relative places of the other substrings.
+            //The simplest way to do this is with a regular expression.
+
             try {
-                using(XmlTextReader reader = new XmlTextReader(path)) {
-                    while(reader.Read()) {
-                        if(reader.NodeType != XmlNodeType.Element || reader.Name == "root") continue;
-                        string[] str = reader.ReadString().Split(new string[] { newValue }, StringSplitOptions.RemoveEmptyEntries);
-                        for(int i = 0; i < str.Length; i++) {
-                            str[i] = str[i].Replace(oldValue, newValue);
-                        }
-                        dictionary[reader.Name] = str;
+                var dictionary = XElement.Load(path).Elements().ToDictionary(
+                    element => element.Name.ToString(),
+                    element => {
+                        string[] substrings =
+                            ((string)element)
+                            .Replace(singleLinebreakAtStart, "")
+                            .Split(new[] { linebreak }, StringSplitOptions.None)
+                            .Select(
+                                s => s.Replace(linebreakLiteral, linebreak)
+                            )
+                            .ToArray();
+                        return substrings;
                     }
-                }
+                );
                 return dictionary;
-            }
-            catch(XmlException exception) {
-                MessageBox.Show(string.Concat(new object[] { "Invalid language file.\r\n\r\n\"", exception.SourceUri, "\"\r\nLine: ", exception.LineNumber, "\r\nPosition: ", exception.LinePosition }));
+            } catch (XmlException xmlException) {
+                string msg = String.Join("\r\n", new[] {
+                    "Invalid language file.",
+                    "",
+                    xmlException.SourceUri,
+                    "Line: " + xmlException.LineNumber,
+                    "Position: " + xmlException.LinePosition,
+                    "Detail: " + xmlException.Message
+                });
+                MessageBox.Show(msg);
+                return null;
+            } catch (Exception exception) {
+                QTUtility2.MakeErrorLog(exception);
                 return null;
             }
-            catch(Exception exception2) {
-                QTUtility2.MakeErrorLog(exception2);
-                return null;
-            }
-            //return dictionary;
         }
 
         public static void RefreshLockedTabsList() {

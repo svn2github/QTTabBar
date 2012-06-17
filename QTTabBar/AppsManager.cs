@@ -304,12 +304,12 @@ namespace QTTabBarLib {
             if(!String.IsNullOrEmpty(work))
                 path += ", " + work;
 
-            // todo: localize
             MessageBox.Show(
-                    "Operation failed.\r\nPlease make sure the file or the target of link exists:\r\n\r\n" + path,
-                    "Error - QTTabBar",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                String.Format(QTUtility.TextResourcesDic["ErrorDialogs"][0], path),
+                QTUtility.TextResourcesDic["ErrorDialogs"][1],
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            );
         }
 
         public static void CreateNewApp(List<string> paths) {

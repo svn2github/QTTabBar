@@ -208,8 +208,11 @@ namespace QTTabBarLib {
 
             string text;
             if(b) {
-                // TODO: Localize this
-                text = WatermarkText ?? string.Format("Choose your {0}", File ? "file" : "folder");
+                text = WatermarkText ?? (
+                    File ?
+                    QTUtility.TextResourcesDic["Misc_Strings"][4] :
+                    QTUtility.TextResourcesDic["Misc_Strings"][5]
+                );
             }
             else {
                 text = string.Empty;

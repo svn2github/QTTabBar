@@ -272,9 +272,9 @@ namespace QTTabBarLib {
             tsmiOneClick.Checked = Config.Desktop.OneClickMenu;
             tsmiAppKeys.Checked = Config.Desktop.EnableAppShortcuts;
             
-            // todo: localize
-            tsmiExperimental = new ToolStripMenuItem("Experimental");
-            tsmiExperimental.DropDown.Items.Add(new ToolStripMenuItem("dummy"));
+            tsmiExperimental = new ToolStripMenuItem(QTUtility.TextResourcesDic["Misc_Strings"][6]);
+            tsmiExperimental.DropDown.Items.Add(new ToolStripMenuItem(QTUtility.TextResourcesDic["Misc_Strings"][7]));
+            //TODO does this respect RTL settings?
             tsmiExperimental.DropDownDirection = ToolStripDropDownDirection.Left;
             tsmiExperimental.DropDownItemClicked += tsmiExperimental_DropDownItemClicked;
             tsmiExperimental.DropDownOpening += tsmiExperimental_DropDownOpening;
@@ -479,8 +479,9 @@ namespace QTTabBarLib {
                     timerHooks.Tick += (sender, args) => {
                         if(++iHookTimeout > 5) {
                             timerHooks.Stop();
-                            // todo: localize
-                            MessageBox.Show("Failed to hook Desktop. Please re-enable QT Tab Desktop tool.");
+                            MessageBox.Show(
+                                QTUtility.TextResourcesDic["ErrorDialogs"][8]
+                            );
                             return;
                         }
                         InstallDesktopHook();
@@ -1906,8 +1907,12 @@ namespace QTTabBarLib {
                 }
             }
             catch {
-                MessageBox.Show("Operation failed.\r\nPlease make sure the folder exists or you have permission to access to:\r\n\r\n\t" +
-                        path, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    String.Format(QTUtility.TextResourcesDic["ErrorDialogs"][9], path),
+                    QTUtility.TextResourcesDic["ErrorDialogs"][4], 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error
+                );
             }
         }
 
@@ -1918,9 +1923,10 @@ namespace QTTabBarLib {
                 tsmiExperimental.DropDownOpening -= tsmiExperimental_DropDownOpening;
 
                 tsmiExperimental.DropDown.SuspendLayout();
-                // todo: localize
-                foreach(string t in new string[] { "List", "Details", "Tiles", "Default" }) {
-                    tsmiExperimental.DropDown.Items.Add(t);
+                for(int i = 0; i < 4; i++) {
+                    tsmiExperimental.DropDown.Items.Add(
+                        QTUtility.TextResourcesDic["Desktop"][i]
+                    );
                 }
                 tsmiExperimental.DropDown.ResumeLayout();
             }

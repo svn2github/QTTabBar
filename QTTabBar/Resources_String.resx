@@ -123,20 +123,29 @@
   <data name="ButtonBar_Misc" xml:space="preserve">
     <value>Path;Name;Current folder path;Current folder name;MD5; items;Paths of all open tabs</value>
   </data>
+  <data name="Desktop" xml:space="preserve">
+    <value>List;Details;Tiles;Default</value>
+  </data>
   <data name="DialogButtons" xml:space="preserve">
     <value>OK;Cancel;&amp;Apply;&amp;Default;Reset &amp;Page;&amp;Reset All;Reset;Add;Add...;Remove;Options;Enable;Disable;Undo;Load...;Save...</value>
   </data>
   <data name="DragDropToolTip" xml:space="preserve">
     <value>Copy to:;Move to:;Create shortcut in:</value>
   </data>
+  <data name="ErrorDialogs" xml:space="preserve">
+    <value>Operation failed.\r\nPlease make sure the file or the target of link exists:\r\n\r\n{0};Error - QTTabBar;Warning:  Could not automatically enable QTTabBar. To enable it manually, press and release the Alt key, then select QTTabBar from the View/Toolbars menu.;Could not enable;Error;Unable to load QTTabBar hook library.;Unable to initialize QTTabBar hook library.;Some features might not be functional. To resolve this, you may need to reinstall the application.;Failed to hook Desktop. Please re-enable QT Tab Desktop tool.;Operation failed.\r\nPlease make sure the folder exists or you have permission to access to:\r\n\r\n\t{0}</value>
+  </data>
   <data name="FileFilters" xml:space="preserve">
     <value>Image Files;Language Files;Plugin Files</value>
+  </data>
+  <data name="FileHashComputer" xml:space="preserve">
+    <value>Path;Hash;Close;Clear;Refresh;Always on top;Show result;Clear on close;Full path;(Now calculating...)</value>
   </data>
   <data name="MarginDropDown" xml:space="preserve">
     <value>All;Left;Top;Right;Bottom</value>
   </data>
   <data name="Misc_Strings" xml:space="preserve">
-    <value>Desktop Search;Image file is invalid.\r\n\r\nPlease specify 432 x 40 px image file.;Search Results in;shortcut</value>
+    <value>Desktop Search;Image file is invalid.\r\n\r\nPlease specify 432 x 40 px image file.;Search Results in;shortcut;Choose your file;Choose your folder;Experimental;dummy</value>
   </data>
   <data name="OptionsDialog" xml:space="preserve">
     <value>QTTabBar Options;Reset all options on this page to their default values?;Reset all options to their default values?  This will not affect Groups, Applications, or Plugins.;Confirmation</value>
@@ -219,6 +228,6 @@
     <value>1 window;{0} windows</value>
   </data>
   <data name="UpdateCheck" xml:space="preserve">
-    <value>A new version of QTTabBar has been released:;Press OK to go to the web site.;Your version of QTTabBar is up to date.;New development version found:</value>
+    <value>A new version of QTTabBar has been released:;Press OK to go to the web site.;Your version of QTTabBar is up to date.;New development version found:;Version file not found (404).;Unknown network error.;Server not found.;Server returned wrong strings.</value>
   </data>
 </root>

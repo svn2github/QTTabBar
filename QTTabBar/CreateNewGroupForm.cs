@@ -67,13 +67,13 @@ namespace QTTabBarLib {
             buttonOK.Location = new Point(0x8b, 0x42);
             buttonOK.Size = new Size(0x4b, 0x17);
             buttonOK.TabIndex = 0;
-            buttonOK.Text = "OK";
+            buttonOK.Text = QTUtility.TextResourcesDic["DialogButtons"][0];
             buttonOK.Click += buttonOK_Click;
             buttonCancel.DialogResult = DialogResult.Cancel;
             buttonCancel.Location = new Point(220, 0x42);
             buttonCancel.Size = new Size(0x4b, 0x17);
             buttonCancel.TabIndex = 1;
-            buttonCancel.Text = "Cancel";
+            buttonCancel.Text =QTUtility.TextResourcesDic["DialogButtons"][1];
             label1.AutoSize = true;
             label1.Location = new Point(12, 0x12);
             label1.Size = new Size(0x41, 12);

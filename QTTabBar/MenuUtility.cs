@@ -292,13 +292,20 @@ namespace QTTabBarLib {
         }
 
         private static void realDirectory_DropDownItemClicked(object sender, ToolStripItemClickedEventArgs e) {
-            if(!(e.ClickedItem is DirectoryMenuItem)) {
-                try {
-                    Process.Start(((QMenuItem)e.ClickedItem).Path);
-                }
-                catch {
-                    MessageBox.Show("Operation failed.\r\nPlease make sure the file or the target of link exists:\r\n\r\n\t" + e.ClickedItem.Name, "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
-                }
+            if (e.ClickedItem is DirectoryMenuItem) { return;}
+
+            try {
+                Process.Start(((QMenuItem)e.ClickedItem).Path);
+            } catch {
+                MessageBox.Show(
+                    String.Format(
+                        QTUtility.TextResourcesDic["ErrorDialogs"][0],
+                        e.ClickedItem.Name
+                    ),
+                    QTUtility.TextResourcesDic["ErrorDialogs"][1],
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Hand
+                );
             }
         }
 
