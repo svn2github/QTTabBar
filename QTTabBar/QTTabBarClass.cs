@@ -4110,96 +4110,100 @@ namespace QTTabBarLib {
                     }
                 }
             }
-        }    
+        }
 
+        // todo: CLEANNNNNNNNN
         public void OpenGroup(string groupName, bool fForceNewWindow, bool fDisableOverrides = false) {
-            
-            // todo: CLEANNNNNNNNN
-            if(!fForceNewWindow) {
-                NowTabsAddingRemoving = true;
-                bool flag = false;
-                string str4 = null;
-                int num = 0;
-                QTabItem tabPage = null;
-                Keys modifierKeys = ModifierKeys;
-                bool flag3 = Config.Tabs.NeverOpenSame == (modifierKeys != Keys.Shift);
-                bool flag4 = Config.Tabs.ActivateNewTab == (modifierKeys != Keys.Control);
-                bool flag5 = false;
+            Group g;
+            if (fForceNewWindow) {
+                g = GroupsManager.GetGroup(groupName);
+                if (g == null || g.Paths.Count <= 0) { return; }
 
-                //# Disable group hotkeys clashing with modifierKeys
-                if(fDisableOverrides) {
-                    flag3 = Config.Tabs.NeverOpenSame;
-                    flag4 = Config.Tabs.ActivateNewTab;
-                }
-                if(NowOpenedByGroupOpener) {
-                    flag3 = true;
-                    NowOpenedByGroupOpener = false;
-                }
-                Group g = GroupsManager.GetGroup(groupName);
-                if(g != null) {
-                    List<string> list = (from QTabItem item in tabControl1.TabPages select item.CurrentPath.ToLower()).ToList();
-                    if(g.Paths.Count != 0) {
-                        try {
-                            tabControl1.SetRedraw(false);
-                            foreach(string gpath in g.Paths.Where(gpath => 
-                                    QTUtility2.PathExists(gpath) || gpath.Contains("???"))) {
-                                if(str4 == null) {
-                                    str4 = gpath;
-                                }
-                                if(!flag3 || !list.Contains(gpath.ToLower())) {
-                                    num++;
-                                    using(IDLWrapper wrapper2 = new IDLWrapper(gpath)) {
-                                        if(wrapper2.Available) {
-                                            if(tabPage == null) {
-                                                tabPage = CreateNewTab(wrapper2);
-                                            }
-                                            else {
-                                                CreateNewTab(wrapper2);
-                                            }
-                                        }
-                                    }
-                                    flag = true;
-                                }
-                                else if(tabPage == null) {
-                                    foreach(QTabItem item3 in tabControl1.TabPages) {
-                                        if(item3.CurrentPath.PathEquals(gpath)) {
-                                            tabPage = item3;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                            NowTabsAddingRemoving = false;
-                            if(((str4 != null) && (flag4 || (tabControl1.SelectedIndex == -1))) && (tabPage != null)) {
-                                if(flag) {
-                                    NowTabCreated = true;
-                                }
-                                flag5 = tabPage != CurrentTab;
-                                tabControl1.SelectTab(tabPage);
-                            }
-                        }
-                        finally {
-                            tabControl1.SetRedraw(true);
-                        }
-                    }
-                }
-                TryCallButtonBar(bbar => bbar.RefreshButtons());
-                if(flag5) QTabItem.CheckSubTexts(tabControl1);
-                NowTabsAddingRemoving = false;
-            }
-            else {
-                Group g = GroupsManager.GetGroup(groupName);
-                if(g != null && g.Paths.Count > 0) {
-                    string path = g.Paths[0];
-                    StaticReg.CreateWindowGroup = groupName;
-                    using(IDLWrapper wrapper = new IDLWrapper(path)) {
-                        if(wrapper.Available) {
-                            OpenNewWindow(wrapper);
-                            return;
-                        }
+                StaticReg.CreateWindowGroup = groupName;
+                using (IDLWrapper wrapper = new IDLWrapper(g.Paths[0])) {
+                    if (wrapper.Available) {
+                        OpenNewWindow(wrapper);
+                        return;
                     }
                 }
                 StaticReg.CreateWindowGroup = string.Empty;
+                return;
+            }
+
+            NowTabsAddingRemoving = true;
+            bool flag = false;
+            string str4 = null;
+            int num = 0;
+            QTabItem tabPage = null;
+            Keys modifierKeys = ModifierKeys;
+            bool flag3 = Config.Tabs.NeverOpenSame == (modifierKeys != Keys.Shift);
+            bool flag4 = Config.Tabs.ActivateNewTab == (modifierKeys != Keys.Control);
+            bool flag5 = false;
+
+            //# Disable group hotkeys clashing with modifierKeys
+            if (fDisableOverrides) {
+                flag3 = Config.Tabs.NeverOpenSame;
+                flag4 = Config.Tabs.ActivateNewTab;
+            }
+            if (NowOpenedByGroupOpener) {
+                flag3 = true;
+                NowOpenedByGroupOpener = false;
+            }
+            g = GroupsManager.GetGroup(groupName);
+            if (g != null && g.Paths.Count != 0) {
+                try {
+                    tabControl1.SetRedraw(false);
+                    var gpaths =
+                        from gpath in g.Paths
+                        where QTUtility2.PathExists(gpath) || gpath.Contains("???")
+                        select gpath;
+
+                    foreach (var gpath in gpaths) {
+                        if (str4 == null) { str4 = gpath; }
+
+                        var list =
+                            from item in tabControl1.TabPages
+                            select item.CurrentPath.ToLower();
+
+                        if (!flag3 || !list.Contains(gpath.ToLower())) {
+                            num++;
+                            using (var wrapper2 = new IDLWrapper(gpath)) {
+                                if (wrapper2.Available) {
+                                    if (tabPage == null) {
+                                        tabPage = CreateNewTab(wrapper2);
+                                    } else {
+                                        CreateNewTab(wrapper2);
+                                    }
+                                }
+                            }
+                            flag = true;
+                        } else if (tabPage == null) {
+                            tabPage = (
+                                from item in tabControl1.TabPages
+                                where item.CurrentPath.PathEquals(gpath)
+                                select item
+                            ).FirstOrDefault();
+                        }
+                    }
+
+                    NowTabsAddingRemoving = false;
+                    bool condition =
+                        str4 != null &&
+                        (flag4 || (tabControl1.SelectedIndex == -1)) &&
+                        tabPage != null;
+                    if (condition) {
+                        if (flag) {
+                            NowTabCreated = true;
+                        }
+                        flag5 = tabPage != CurrentTab;
+                        tabControl1.SelectTab(tabPage);
+                    }
+                } finally {
+                    tabControl1.SetRedraw(true);
+                }
+                TryCallButtonBar(bbar => bbar.RefreshButtons());
+                if (flag5) QTabItem.CheckSubTexts(tabControl1);
+                NowTabsAddingRemoving = false;
             }
         }
 
